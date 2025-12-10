@@ -167,7 +167,9 @@
       // Listen for card click events to open modal
       document.addEventListener('orgCardClick', (event) => {
         const org = event.detail.organization;
-        openModal(org);
+        // Ensure we're using the full organization data with all fields
+        const fullOrg = allOrganizations.find(o => o.id === org.id) || org;
+        openModal(fullOrg);
       });
 
       // Hardcoded CLUB_DATA removed - now using Supabase
@@ -388,6 +390,8 @@
 
       function openModal(org) {
         // Handle both old club format and new org format from Supabase
+        // Log for debugging
+        console.log('Opening modal for org:', org.name, 'Facebook link:', org.facebook_link);
         const club = org;
         const logo = buildLogoPath(club);
         const primaryCategory = (club.categories && club.categories.length > 0) ? club.categories[0] : "Academic";
@@ -441,16 +445,16 @@
 
           <div class="modal-contact">
             <h3>Get In Touch</h3>
+            ${((club.facebook_link && club.facebook_link.trim()) || (club.facebookLink && club.facebookLink.trim())) ? `
             <div class="contact-item">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
               </svg>
-              ${club.facebook_link ? `
-              <a href="${club.facebook_link}" target="_blank" rel="noopener noreferrer" class="contact-link">
+              <a href="${(club.facebook_link && club.facebook_link.trim()) ? club.facebook_link : club.facebookLink}" target="_blank" rel="noopener noreferrer" class="contact-link">
                 Visit Facebook Page
               </a>
-              ` : '<span style="color: var(--muted);">No Facebook page available</span>'}
             </div>
+            ` : ''}
             <div class="contact-item">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
@@ -532,7 +536,9 @@
           const card = tempDiv.firstElementChild;
           if (card) {
             card.addEventListener('click', () => {
-              const event = new CustomEvent('orgCardClick', { detail: { organization: match } });
+              // Ensure we're using the full organization data with all fields
+              const fullOrg = allOrganizations.find(o => o.id === match.id) || match;
+              const event = new CustomEvent('orgCardClick', { detail: { organization: fullOrg } });
               document.dispatchEvent(event);
             });
             cardsWrapper.appendChild(card);

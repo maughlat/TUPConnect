@@ -186,7 +186,9 @@
       // Listen for card click events to open modal
       document.addEventListener('orgCardClick', (event) => {
         const org = event.detail.organization;
-        openModal(org);
+        // Ensure we're using the full organization data with all fields
+        const fullOrg = allOrganizations.find(o => o.id === org.id) || org;
+        openModal(fullOrg);
       });
 
       // Organizations are now loaded from Supabase via fetchAndRenderOrgs()
@@ -265,12 +267,12 @@
 
           <div class="modal-contact">
             <h3>Get In Touch</h3>
-            ${club.facebook_link ? `
+            ${((club.facebook_link && club.facebook_link.trim()) || (club.facebookLink && club.facebookLink.trim())) ? `
             <div class="contact-item">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
               </svg>
-              <a href="${club.facebook_link}" target="_blank" rel="noopener noreferrer" class="contact-link">
+              <a href="${(club.facebook_link && club.facebook_link.trim()) ? club.facebook_link : club.facebookLink}" target="_blank" rel="noopener noreferrer" class="contact-link">
                 Visit Facebook Page
               </a>
             </div>
