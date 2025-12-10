@@ -432,7 +432,14 @@
             if (orgData && orgData.account_status === 'Account Activated') {
               // User's email matches an activated organization - create org_officer role
               console.log('Organization found for email. Creating org_officer role...');
-              const { data: newRoleData, error: createRoleError } = await window.supabase
+              console.log('Organization:', orgData.name, 'ID:', orgData.id);
+              
+              // Try to insert, but handle if it already exists
+              let newRoleData;
+              let createRoleError;
+              
+              // First try direct insert
+              const { data: insertedRole, error: insertError } = await window.supabase
                 .from('user_roles')
                 .insert({
                   user_id: userId,
@@ -442,15 +449,49 @@
                 .select()
                 .single();
 
-              if (createRoleError) {
-                console.error('Error creating user role:', createRoleError);
-                await window.supabase.auth.signOut();
-                throw new Error('User role not found and could not be created automatically. Please contact an administrator.');
+              if (insertError) {
+                // If insert fails, might be because record exists - try to update
+                console.log('Insert failed, trying to update existing record...');
+                const { data: updatedRole, error: updateError } = await window.supabase
+                  .from('user_roles')
+                  .update({
+                    organization_id: orgData.id,
+                    role: 'org_officer'
+                  })
+                  .eq('user_id', userId)
+                  .select()
+                  .single();
+
+                if (updateError) {
+                  // Update also failed - check if record actually exists now
+                  console.log('Update also failed, checking if record exists...');
+                  const { data: existingRole, error: checkError } = await window.supabase
+                    .from('user_roles')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .maybeSingle();
+
+                  if (checkError || !existingRole) {
+                    console.error('❌ All attempts to create/update role failed:', insertError, updateError);
+                    await window.supabase.auth.signOut();
+                    throw new Error('User role not found and could not be created automatically. Please contact an administrator.');
+                  } else {
+                    // Record exists, use it
+                    newRoleData = existingRole;
+                    console.log('✓ Found existing role record');
+                  }
+                } else {
+                  newRoleData = updatedRole;
+                  console.log('✓ User role updated');
+                }
+              } else {
+                newRoleData = insertedRole;
+                console.log('✓ User role created');
               }
 
-              // Use the newly created role
+              // Use the role
               userRoleData = newRoleData;
-              console.log('✓ User role created automatically:', userRoleData.role);
+              console.log('✓ User role ready:', userRoleData.role, 'Org ID:', userRoleData.organization_id);
             } else {
               // No matching organization found - user needs admin role
               console.error('No matching organization found for user email');
