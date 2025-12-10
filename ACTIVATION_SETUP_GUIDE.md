@@ -40,7 +40,7 @@ The password setup page where Organization Officers set their initial password a
    - Click **"Add URL"** or the **"+"** button (or similar add button)
    - Enter your `setup_password.html` URL:
      ```
-     https://yourdomain.com/components/setup_password.html
+     https://tupconnect.vercel.app/components/setup_password.html
      ```
    - Or for local testing:
      ```
@@ -50,7 +50,7 @@ The password setup page where Organization Officers set their initial password a
 
 4. **Verify Site URL:**
    - On the same "URL Configuration" page, find the **"Site URL"** field (usually at the top)
-   - Set it to your main domain (e.g., `https://yourdomain.com`)
+   - Set it to your production domain: `https://tupconnect.vercel.app`
    - Or for local testing: `http://localhost:5500`
    - Click **"Save"** if you made changes
 
