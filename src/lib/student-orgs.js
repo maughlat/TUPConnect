@@ -197,23 +197,36 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
   html += '</div>';
   html += '</div>';
 
-  // Category badges - display all categories
+  // Category badges - display primary category and counter for remaining
+  html += '<div class="club-categories-wrapper">';
   if (orgData.categories && Array.isArray(orgData.categories) && orgData.categories.length > 0) {
-    // Display first category as main badge
-    html += `<div class="club-category-badge">${escapeHtml(orgData.categories[0])}</div>`;
-    // Display additional categories if there are more
-    if (orgData.categories.length > 1) {
-      html += `<div class="club-categories-list" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted, #666); display: flex; flex-wrap: wrap; gap: 0.4rem;">`;
-      orgData.categories.forEach((cat, index) => {
-        if (index > 0) { // Skip first one (already shown as badge)
-          html += `<span style="padding: 0.2rem 0.6rem; background: rgba(184, 20, 20, 0.08); border-radius: 999px; color: var(--accent, #b81414); font-weight: 500;">${escapeHtml(cat)}</span>`;
-        }
-      });
+    const primaryCategory = orgData.categories[0];
+    const remainingCategoriesCount = orgData.categories.length - 1;
+    
+    // Display primary category badge with popover
+    html += `<div class="club-category-badge-container">`;
+    html += `<div class="club-category-badge">${escapeHtml(primaryCategory)}</div>`;
+    html += `<div class="category-popover">${escapeHtml(primaryCategory)}</div>`;
+    html += `</div>`;
+    
+    // Display counter badge if there are remaining categories
+    if (remainingCategoriesCount > 0) {
+      const remainingCategories = orgData.categories.slice(1);
+      html += `<div class="category-counter-badge-container">`;
+      html += `<div class="category-counter-badge">+${remainingCategoriesCount}</div>`;
+      html += '<div class="category-popover">';
+      html += remainingCategories.map(cat => escapeHtml(cat)).join(', ');
+      html += '</div>';
       html += '</div>';
     }
   } else {
+    // Fallback to primaryCategory if no categories array
+    html += `<div class="club-category-badge-container">`;
     html += `<div class="club-category-badge">${escapeHtml(primaryCategory)}</div>`;
+    html += `<div class="category-popover">${escapeHtml(primaryCategory)}</div>`;
+    html += `</div>`;
   }
+  html += '</div>';
 
   // Description (About section only)
   const description = orgData.description || 'No description available.';
