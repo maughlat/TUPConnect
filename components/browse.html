@@ -169,17 +169,16 @@
 
       // Load organizations from Supabase on page load
       document.addEventListener('DOMContentLoaded', async () => {
-        const result = await fetchAndRenderOrgs('clubSections', false);
-        
-        if (result.success) {
-          console.log(`Loaded ${result.count} organizations`);
-          // Fetch organizations for filtering
-          const { data } = await supabase.from('organizations').select('*');
-          if (data) {
-            allOrganizations = data;
-          }
+        // Fetch organizations for filtering and rendering
+        const { data } = await supabase.from('organizations').select('*');
+        if (data) {
+          allOrganizations = data;
+          console.log(`Loaded ${data.length} organizations`);
+          // Initial render with no filters (show all)
+          renderCategories('', [], []);
         } else {
-          console.error('Failed to load organizations:', result.error);
+          console.error('Failed to load organizations');
+          container.innerHTML = '<p style="text-align: center; color: #dc2626; padding: 2rem;">Failed to load organizations. Please refresh the page.</p>';
         }
       });
 
@@ -354,13 +353,23 @@
         }
 
         const filtered = allOrganizations.filter((org) => {
+          // Text search filter
           const textMatch = !filteredText ||
             org.name.toLowerCase().includes(filteredText) ||
             (org.description && org.description.toLowerCase().includes(filteredText));
           if (!textMatch) return false;
+          
+          // Affiliation filter
           const hasAff = !affFilters.length || affFilters.includes(org.affiliation);
-          const hasCat = !catFilters.length || catFilters.some((c) => (org.categories || []).includes(c));
-          return hasAff && hasCat;
+          if (!hasAff) return false;
+          
+          // Category filter - if no categories selected, show all (including orgs with no categories)
+          // If categories are selected, check if org has any matching category
+          const hasCat = !catFilters.length || 
+            (org.categories && Array.isArray(org.categories) && org.categories.length > 0 && 
+             catFilters.some((selectedCat) => org.categories.includes(selectedCat)));
+          
+          return hasCat;
         });
 
         const grouped = {};
