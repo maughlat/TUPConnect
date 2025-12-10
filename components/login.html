@@ -402,7 +402,7 @@
           console.log('Selected Role:', currentRole);
 
           // Step 2: Query user_roles table to get the user's actual role
-          const { data: userRoleData, error: roleError } = await window.supabase
+          let { data: userRoleData, error: roleError } = await window.supabase
             .from('user_roles')
             .select('role, organization_id')
             .eq('user_id', userId)
