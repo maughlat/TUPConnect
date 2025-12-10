@@ -267,12 +267,12 @@
 
           <div class="modal-contact">
             <h3>Get In Touch</h3>
-            ${((club.facebook_link && club.facebook_link.trim()) || (club.facebookLink && club.facebookLink.trim())) ? `
+            ${(club.facebook_link && club.facebook_link.trim().length > 0) ? `
             <div class="contact-item">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
               </svg>
-              <a href="${(club.facebook_link && club.facebook_link.trim()) ? club.facebook_link : club.facebookLink}" target="_blank" rel="noopener noreferrer" class="contact-link">
+              <a href="${club.facebook_link.trim()}" target="_blank" rel="noopener noreferrer" class="contact-link">
                 Visit Facebook Page
               </a>
             </div>
@@ -372,7 +372,9 @@
             const card = tempDiv.firstElementChild;
             if (card) {
               card.addEventListener('click', () => {
-                const event = new CustomEvent('orgCardClick', { detail: { organization: org } });
+                // Always use the full organization data from allOrganizations
+                const fullOrg = allOrganizations.find(o => o.id === org.id) || org;
+                const event = new CustomEvent('orgCardClick', { detail: { organization: fullOrg } });
                 document.dispatchEvent(event);
               });
               cardsWrapper.appendChild(card);
