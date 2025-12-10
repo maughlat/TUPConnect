@@ -493,10 +493,19 @@
               userRoleData = newRoleData;
               console.log('✓ User role ready:', userRoleData.role, 'Org ID:', userRoleData.organization_id);
             } else {
-              // No matching organization found - user needs admin role
-              console.error('No matching organization found for user email');
+              // No matching organization found
+              console.error('No matching organization found for user email:', userEmail);
+              console.error('Organization data:', orgData);
+              
+              // Check if organization exists but not activated
+              if (orgData && orgData.account_status !== 'Account Activated') {
+                await window.supabase.auth.signOut();
+                throw new Error(`Organization account for "${orgData.name}" is not yet activated. Please complete password setup first using the activation link sent to your email.`);
+              }
+              
+              // No matching organization - needs admin role or organization not set up
               await window.supabase.auth.signOut();
-              throw new Error('User role not found. This account needs to be assigned a role. Please contact an administrator.');
+              throw new Error('User role not found. This account needs to be assigned a role. Please: 1) Complete password setup using the activation email, 2) If problem persists, contact an administrator. Make sure you ran the SQL trigger in Supabase (see URGENT_FIX_STEPS.md).');
             }
           }
 
