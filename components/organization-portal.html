@@ -242,6 +242,11 @@
             role: userRole,
             organizationId: userRoleData.organization_id
           };
+
+          // Store organization ID in localStorage for easy access
+          if (userRoleData.organization_id) {
+            localStorage.setItem('tupconnect_organization_id', userRoleData.organization_id);
+          }
         } catch (error) {
           console.error('Session verification error:', error);
           window.location.href = 'login.html?error=verification_failed';
@@ -312,6 +317,87 @@
         // Initialize portal after authentication
         initializePortal(sessionData.organizationId);
       });
+
+      /**
+       * Fetch organization data for the logged-in officer
+       * Retrieves the organization record using the ID stored in localStorage
+       * 
+       * @returns {Promise<Object>} Returns { success: boolean, data: Object|null, error: string|null }
+       *                            - success: true if organization was found and retrieved
+       *                            - data: The organization object with all fields, or null if error
+       *                            - error: Error message string, or null if successful
+       */
+      async function fetchOrgDataForOfficer() {
+        try {
+          // Step 1: Get organization ID from localStorage
+          const orgId = localStorage.getItem('tupconnect_organization_id');
+
+          if (!orgId) {
+            console.error('❌ Organization ID not found in localStorage');
+            return {
+              success: false,
+              data: null,
+              error: 'Organization ID not found. Please log in again.'
+            };
+          }
+
+          console.log('Fetching organization data for ID:', orgId);
+
+          // Step 2: Query Supabase for the organization
+          const { data: organization, error: queryError } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('id', orgId)
+            .single();
+
+          // Step 3: Handle query errors
+          if (queryError) {
+            console.error('❌ Error fetching organization:', queryError);
+            
+            // Handle specific error cases
+            if (queryError.code === 'PGRST116') {
+              // No rows returned - organization not found
+              return {
+                success: false,
+                data: null,
+                error: 'Organization not found. Please contact an administrator.'
+              };
+            }
+
+            return {
+              success: false,
+              data: null,
+              error: queryError.message || 'Failed to fetch organization data. Please try again.'
+            };
+          }
+
+          // Step 4: Verify data exists
+          if (!organization) {
+            console.error('❌ Organization data is null');
+            return {
+              success: false,
+              data: null,
+              error: 'Organization data not found.'
+            };
+          }
+
+          console.log('✓ Organization data fetched successfully:', organization.name);
+          return {
+            success: true,
+            data: organization,
+            error: null
+          };
+
+        } catch (error) {
+          // Handle unexpected errors
+          console.error('❌ Unexpected error in fetchOrgDataForOfficer:', error);
+          return {
+            success: false,
+            data: null,
+            error: error.message || 'An unexpected error occurred while fetching organization data.'
+          };
+        }
+      }
 
       // Mock organization data
       let organizationProfile = {
