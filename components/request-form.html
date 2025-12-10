@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect • Request to Join</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/navbar.css" />
+    <style>
+      .request-form-container {
+        max-width: 800px;
+        margin: 4rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      .form-header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      .form-header h1 {
+        font-size: 2rem;
+        color: var(--primary, #a32727);
+        margin-bottom: 0.5rem;
+      }
+
+      .form-header p {
+        color: var(--muted, #666);
+        font-size: 1rem;
+      }
+
+      .org-info {
+        background: rgba(163, 39, 39, 0.05);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        border-left: 4px solid var(--primary, #a32727);
+      }
+
+      .org-info h3 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary, #a32727);
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--fg, #333);
+      }
+
+      .form-group label .required {
+        color: #dc2626;
+      }
+
+      .form-group input[type="text"],
+      .form-group input[type="email"],
+      .form-group input[type="file"],
+      .form-group select,
+      .form-group textarea {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 1px solid rgba(163, 39, 39, 0.2);
+        border-radius: 8px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.95rem;
+        background: white;
+        color: var(--fg, #333);
+        box-sizing: border-box;
+      }
+
+      .form-group input[type="file"] {
+        padding: 0.5rem;
+        cursor: pointer;
+      }
+
+      .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+      }
+
+      .form-group small {
+        display: block;
+        margin-top: 0.5rem;
+        color: var(--muted, #666);
+        font-size: 0.85rem;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .btn-primary {
+        flex: 1;
+        padding: 0.875rem 1.5rem;
+        background: var(--primary, #a32727);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .btn-primary:hover {
+        background: #8b1f1f;
+      }
+
+      .btn-primary:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        padding: 0.875rem 1.5rem;
+        background: transparent;
+        color: var(--fg, #333);
+        border: 1px solid rgba(163, 39, 39, 0.3);
+        border-radius: 8px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn-secondary:hover {
+        background: rgba(163, 39, 39, 0.05);
+      }
+
+      .message {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        display: none;
+      }
+
+      .message.success {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #16a34a;
+      }
+
+      .message.error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #dc2626;
+      }
+
+      .file-info {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: rgba(163, 39, 39, 0.05);
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: var(--muted, #666);
+      }
+
+      .file-info.hidden {
+        display: none;
+      }
+    </style>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <header class="site-header-custom">
+      <div class="navbar-content-custom">
+        <div class="navbar-spacer"></div>
+        <a href="../index.html" class="navbar-logo-custom">TUPConnect</a>
+        <nav class="nav-links-custom">
+          <a href="browse.html" class="nav-link-custom" data-page="browse">Browse Clubs</a>
+          <a href="findmatch.html" class="nav-link-custom" data-page="findmatch">Find Your Match</a>
+          <a href="../index.html#about" class="nav-link-custom" data-page="about">About</a>
+        </nav>
+        <div class="navbar-spacer"></div>
+        <div class="admin-access-wrapper">
+          <button class="admin-icon-btn" id="adminIconBtn" aria-label="Admin access" title="Admin Login">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="admin-dropdown" id="adminDropdown">
+            <p class="admin-dropdown-text">You're an Admin or Organization?</p>
+            <a href="login.html" class="admin-dropdown-link">Log In here.</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="request-form-container">
+        <div class="form-header">
+          <h1>Request to Join Organization</h1>
+          <p>Fill out the form below to submit your application</p>
+        </div>
+
+        <div class="org-info" id="orgInfo">
+          <h3 id="orgName">Loading organization information...</h3>
+        </div>
+
+        <div class="message" id="formMessage"></div>
+
+        <form id="applicationForm">
+          <input type="hidden" id="organizationId" name="organizationId" />
+
+          <div class="form-group">
+            <label for="studentName">Full Name <span class="required">*</span></label>
+            <input type="text" id="studentName" name="studentName" required placeholder="Juan Dela Cruz" />
+          </div>
+
+          <div class="form-group">
+            <label for="personalEmail">Personal Email <span class="required">*</span></label>
+            <input type="email" id="personalEmail" name="personalEmail" required placeholder="juan.delacruz@example.com" />
+            <small>We'll use this email to contact you about your application.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="tupStudentNumber">TUP Student Number <span class="required">*</span></label>
+            <input type="text" id="tupStudentNumber" name="tupStudentNumber" required placeholder="TUPM-21-1234" pattern="TUPM-[0-9]{2}-[0-9]{4}" />
+            <small>Format: TUPM-XX-XXXX (e.g., TUPM-21-1234)</small>
+          </div>
+
+          <div class="form-group">
+            <label for="yearSection">Program, Year & Section <span class="required">*</span></label>
+            <input type="text" id="yearSection" name="yearSection" required placeholder="BSIT 3-1" />
+            <small>Example: BSIT 3-1, BSCS 2-2, etc.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="collegeAffiliated">College Affiliated <span class="required">*</span></label>
+            <select id="collegeAffiliated" name="collegeAffiliated" required>
+              <option value="">Select college...</option>
+              <option value="COS">COS</option>
+              <option value="CAFA">CAFA</option>
+              <option value="CLA">CLA</option>
+              <option value="CIE">CIE</option>
+              <option value="COE">COE</option>
+              <option value="CIT">CIT</option>
+              <option value="Non-College Based">Non-College Based</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="reason">Why do you want to join this organization? <span class="required">*</span></label>
+            <textarea id="reason" name="reason" required placeholder="Tell us about your interest, goals, and what you hope to contribute..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="cvFile">CV/Resume (PDF, DOC, DOCX) <span class="required">*</span></label>
+            <input type="file" id="cvFile" name="cvFile" accept=".pdf,.doc,.docx" required />
+            <small>Upload your CV or resume. Maximum file size: 5MB</small>
+            <div class="file-info hidden" id="fileInfo"></div>
+          </div>
+
+          <div class="form-actions">
+            <a href="browse.html" class="btn-secondary">Cancel</a>
+            <button type="submit" class="btn-primary" id="submitBtn">Submit Application</button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <script type="module">
+      // Initialize Supabase client
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Get organization ID from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const organizationId = urlParams.get('org_id');
+
+      // Load organization information
+      async function loadOrganizationInfo() {
+        if (!organizationId) {
+          showMessage('Organization ID is missing. Please access this form from the organization page.', 'error');
+          document.getElementById('applicationForm').style.display = 'none';
+          return;
+        }
+
+        try {
+          const { data: org, error } = await supabase
+            .from('organizations')
+            .select('id, name, abbreviation, description')
+            .eq('id', organizationId)
+            .single();
+
+          if (error || !org) {
+            throw new Error('Organization not found');
+          }
+
+          document.getElementById('organizationId').value = organizationId;
+          document.getElementById('orgName').textContent = org.name || 'Organization';
+          document.querySelector('.form-header h1').textContent = `Request to Join ${org.name || 'Organization'}`;
+        } catch (error) {
+          console.error('Error loading organization:', error);
+          showMessage('Failed to load organization information. Please try again.', 'error');
+          document.getElementById('applicationForm').style.display = 'none';
+        }
+      }
+
+      /**
+       * Upload CV/Resume to Supabase Storage
+       * @param {File} file - The file to upload
+       * @param {string} orgId - Organization ID
+       * @returns {Promise<string>} Public URL of the uploaded file
+       */
+      async function uploadCVAndGetPath(file, orgId) {
+        try {
+          // Validate file size (5MB limit)
+          const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+          if (file.size > maxSize) {
+            throw new Error('File size exceeds 5MB limit. Please upload a smaller file.');
+          }
+
+          // Generate unique filename: orgId_timestamp_filename
+          const timestamp = Date.now();
+          const fileExt = file.name.split('.').pop();
+          const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const fileName = `${orgId}_${timestamp}_${sanitizedName}`;
+          const filePath = `${orgId}/${fileName}`;
+
+          // Upload file to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('applications')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            throw new Error(`Upload failed: ${uploadError.message}`);
+          }
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('applications')
+            .getPublicUrl(filePath);
+
+          console.log('File uploaded successfully:', publicUrl);
+          return publicUrl;
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          throw error;
+        }
+      }
+
+      /**
+       * Submit application form
+       * @param {FormData} formData - Form data object
+       * @param {string} orgId - Organization ID
+       */
+      async function submitApplication(formData, orgId) {
+        try {
+          const cvFile = document.getElementById('cvFile').files[0];
+          
+          if (!cvFile) {
+            throw new Error('Please select a CV/resume file to upload.');
+          }
+
+          // Step 1: Upload CV file
+          showMessage('Uploading your CV/resume...', 'success');
+          const cvUrl = await uploadCVAndGetPath(cvFile, orgId);
+
+          // Step 2: Prepare application data
+          const applicationData = {
+            organization_id: orgId,
+            student_name: formData.get('studentName').trim(),
+            personal_email: formData.get('personalEmail').trim(),
+            tup_student_number: formData.get('tupStudentNumber').trim().toUpperCase(),
+            year_section: formData.get('yearSection').trim(),
+            college_affiliated: formData.get('collegeAffiliated'),
+            cv_link: cvUrl,
+            notes: formData.get('reason').trim(),
+            status: 'Pending'
+          };
+
+          // Step 3: Insert application into database
+          showMessage('Submitting your application...', 'success');
+          const { data: insertedApp, error: insertError } = await supabase
+            .from('applications')
+            .insert([applicationData])
+            .select()
+            .single();
+
+          if (insertError) {
+            throw new Error(`Failed to submit application: ${insertError.message}`);
+          }
+
+          console.log('Application submitted successfully:', insertedApp);
+          return insertedApp;
+        } catch (error) {
+          console.error('Error submitting application:', error);
+          throw error;
+        }
+      }
+
+      // Show message helper
+      function showMessage(message, type = 'error') {
+        const messageEl = document.getElementById('formMessage');
+        messageEl.textContent = message;
+        messageEl.className = `message ${type}`;
+        messageEl.style.display = 'block';
+
+        if (type === 'success') {
+          setTimeout(() => {
+            messageEl.style.display = 'none';
+          }, 5000);
+        }
+      }
+
+      // File input change handler
+      document.getElementById('cvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const fileInfo = document.getElementById('fileInfo');
+        
+        if (file) {
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          fileInfo.textContent = `Selected: ${file.name} (${fileSizeMB} MB)`;
+          fileInfo.classList.remove('hidden');
+        } else {
+          fileInfo.classList.add('hidden');
+        }
+      });
+
+      // Form submission handler
+      document.getElementById('applicationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!organizationId) {
+          showMessage('Organization ID is missing. Please access this form from the organization page.', 'error');
+          return;
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        const form = e.target;
+        const formData = new FormData(form);
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+          await submitApplication(formData, organizationId);
+          
+          // Success - show success message and redirect
+          showMessage('Application submitted successfully! You will be contacted by the organization shortly.', 'success');
+          form.reset();
+          document.getElementById('fileInfo').classList.add('hidden');
+
+          // Redirect to browse page after 3 seconds
+          setTimeout(() => {
+            window.location.href = 'browse.html';
+          }, 3000);
+        } catch (error) {
+          showMessage(error.message || 'Failed to submit application. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Application';
+        }
+      });
+
+      // Initialize page
+      document.addEventListener('DOMContentLoaded', () => {
+        loadOrganizationInfo();
+      });
+    </script>
+  </body>
+</html>
+

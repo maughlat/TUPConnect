@@ -307,8 +307,8 @@
         const requestBtn = document.getElementById("requestJoinBtn");
         if (requestBtn) {
           requestBtn.addEventListener("click", () => {
-            // TODO: Implement request to join form/modal
-            alert(`Request to join ${club.name} has been submitted!`);
+            // Redirect to request form with organization ID
+            window.location.href = `request-form.html?org_id=${club.id}`;
           });
         }
         

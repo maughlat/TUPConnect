@@ -181,6 +181,7 @@
                     <th>Submitted CV/Resume</th>
                     <th>Date Submitted</th>
                     <th>Status</th>
+                    <th>View</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -193,6 +194,28 @@
         </div>
       </div>
     </main>
+
+    <!-- Application View Modal -->
+    <div id="applicationViewModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" id="applicationViewModalBackdrop"></div>
+      <div class="modal-container">
+        <button class="modal-close" id="applicationViewModalClose" aria-label="Close modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-header">
+          <h2>Application Details</h2>
+        </div>
+        <div class="modal-body" id="applicationViewContent">
+          <!-- Application details will be inserted here -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="applicationViewCloseBtn">Close</button>
+        </div>
+      </div>
+    </div>
 
     <script type="module">
       // Initialize Supabase client (same pattern as admin-dashboard.html)
@@ -451,6 +474,9 @@
         // Initialize profile form handlers
         initializeProfileForm(organizationId);
 
+        // Initialize application view modal
+        initializeApplicationViewModal();
+
         console.log('Organization portal initialized successfully');
       }
 
@@ -516,26 +542,38 @@
 
       /**
        * Fetch applications for this organization
+       * Alias for fetchOrgApplications
        */
       async function fetchApplications(organizationId) {
+        return await fetchOrgApplications(organizationId);
+      }
+
+      /**
+       * Fetch applications for the logged-in organization
+       * @param {string} orgId - Organization ID
+       * @returns {Promise<Array>} Array of application records
+       */
+      async function fetchOrgApplications(orgId) {
         try {
           const { data: apps, error } = await supabase
             .from('applications')
             .select('*')
-            .eq('organization_id', organizationId)
+            .eq('organization_id', orgId)
             .order('date_submitted', { ascending: false });
 
           if (error) {
             console.error('Error fetching applications:', error);
             applications = [];
-            return;
+            return [];
           }
 
           applications = apps || [];
           console.log(`Loaded ${applications.length} applications`);
+          return applications;
         } catch (error) {
-          console.error('Error in fetchApplications:', error);
+          console.error('Error in fetchOrgApplications:', error);
           applications = [];
+          return [];
         }
       }
 
@@ -743,7 +781,7 @@
         if (applications.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="6" style="text-align: center; padding: 2rem; color: var(--muted);">
+              <td colspan="7" style="text-align: center; padding: 2rem; color: var(--muted);">
                 No applications found. Applications from students will appear here.
               </td>
             </tr>
@@ -765,11 +803,11 @@
             : 'N/A';
 
           row.innerHTML = `
-            <td>${app.student_name || 'N/A'}</td>
-            <td>${app.personal_email || 'N/A'}</td>
+            <td>${escapeHtml(app.student_name || 'N/A')}</td>
+            <td>${escapeHtml(app.personal_email || 'N/A')}</td>
             <td>
               ${app.cv_link ? `
-                <a href="${app.cv_link}" class="cv-download-link" target="_blank" rel="noopener noreferrer" onclick="handleCvDownload(event, '${app.id}')">
+                <a href="${escapeHtml(app.cv_link)}" class="cv-download-link" target="_blank" rel="noopener noreferrer" onclick="handleCvDownload(event, '${app.id}')">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
@@ -779,8 +817,16 @@
                 </a>
               ` : '<span style="color: var(--muted);">No CV</span>'}
             </td>
-            <td>${dateStr}</td>
+            <td>${escapeHtml(dateStr)}</td>
             <td>${statusBadge}</td>
+            <td>
+              <button class="btn-action-icon" onclick="viewApplication('${app.id}')" title="View Application Details">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </td>
             <td>
               <div class="org-actions">
                 ${app.status === 'Pending' ? `
@@ -796,7 +842,7 @@
                     </svg>
                   </button>
                 ` : `
-                  <span style="color: var(--muted); font-size: 0.85rem;">${app.status}</span>
+                  <span style="color: var(--muted); font-size: 0.85rem;">${escapeHtml(app.status)}</span>
                 `}
               </div>
             </td>
@@ -809,12 +855,23 @@
       }
 
       /**
-       * Handle application status update (Approve/Reject)
+       * Update application status (Approve/Reject)
+       * Alias for updateApplicationStatus
        */
       async function handleApplication(appId, newStatus) {
-        const app = applications.find(a => a.id === appId);
+        return await updateApplicationStatus(appId, newStatus);
+      }
+
+      /**
+       * Update application status (Approve/Reject)
+       * @param {string} applicationId - Application ID
+       * @param {string} newStatus - New status ('Approved' or 'Rejected')
+       */
+      async function updateApplicationStatus(applicationId, newStatus) {
+        const app = applications.find(a => a.id === applicationId);
         if (!app) {
-          console.error('Application not found:', appId);
+          console.error('Application not found:', applicationId);
+          alert('Application not found. Please refresh the page.');
           return;
         }
 
@@ -831,7 +888,7 @@
               reviewed_at: new Date().toISOString(),
               reviewed_by: reviewedBy
             })
-            .eq('id', appId);
+            .eq('id', applicationId);
 
           if (error) {
             throw new Error('Failed to update application: ' + error.message);
@@ -845,19 +902,31 @@
           // Re-render applications table
           renderApplications();
 
-          // Show notification
+          // Show notification with email confirmation message if approved
           const notification = document.createElement('div');
-          notification.style.cssText = 'position: fixed; top: 100px; right: 20px; background: rgba(34, 197, 94, 0.95); color: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 10000; font-family: "Space Grotesk", sans-serif;';
-          notification.innerHTML = `<strong>✓ Application ${newStatus}</strong><br>${app.student_name}'s application has been ${newStatus.toLowerCase()}.`;
+          notification.style.cssText = 'position: fixed; top: 100px; right: 20px; background: rgba(34, 197, 94, 0.95); color: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 10000; font-family: "Space Grotesk", sans-serif; max-width: 350px;';
+          
+          if (newStatus === 'Approved') {
+            notification.innerHTML = `
+              <strong>✓ Application Approved</strong><br>
+              ${app.student_name}'s application has been approved.<br>
+              <small style="opacity: 0.9; display: block; margin-top: 0.5rem;">
+                ✓ Interview/screening email notification has been scheduled and will be sent to ${app.personal_email} shortly.
+              </small>
+            `;
+          } else {
+            notification.innerHTML = `<strong>✓ Application Rejected</strong><br>${app.student_name}'s application has been rejected.`;
+          }
+
           document.body.appendChild(notification);
 
           setTimeout(() => {
             notification.style.opacity = '0';
             notification.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
+            setTimeout(() => notification.remove(), 5000);
           }, 3000);
 
-          console.log(`Application ${appId} ${newStatus.toLowerCase()}`);
+          console.log(`Application ${applicationId} ${newStatus.toLowerCase()}`);
         } catch (error) {
           console.error('Error updating application:', error);
           alert('Failed to update application. Please try again.');
@@ -866,6 +935,158 @@
 
       // Make function globally available for onclick handlers
       window.handleApplication = handleApplication;
+      window.updateApplicationStatus = updateApplicationStatus;
+
+      /**
+       * Escape HTML to prevent XSS attacks
+       */
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      /**
+       * View application details in modal
+       * @param {string} applicationId - Application ID
+       */
+      function viewApplication(applicationId) {
+        const app = applications.find(a => a.id === applicationId);
+        if (!app) {
+          alert('Application not found. Please refresh the page.');
+          return;
+        }
+
+        const modal = document.getElementById('applicationViewModal');
+        const content = document.getElementById('applicationViewContent');
+
+        // Format date
+        const submittedDate = app.date_submitted 
+          ? new Date(app.date_submitted).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : 'N/A';
+
+        const reviewedDate = app.reviewed_at
+          ? new Date(app.reviewed_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : 'Not reviewed yet';
+
+        const statusBadge = app.status === 'Pending' 
+          ? '<span class="status-badge pending">Pending</span>'
+          : app.status === 'Approved'
+          ? '<span class="status-badge active">Approved</span>'
+          : '<span class="status-badge inactive">Rejected</span>';
+
+        // Render application details as read-only form
+        content.innerHTML = `
+          <div style="display: grid; gap: 1.5rem;">
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Status</label>
+              <div>${statusBadge}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Full Name</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(app.student_name || 'N/A')}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Personal Email</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(app.personal_email || 'N/A')}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">TUP Student Number</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(app.tup_student_number || 'N/A')}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Program, Year & Section</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(app.year_section || 'N/A')}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">College Affiliated</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(app.college_affiliated || 'N/A')}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Reason for Joining</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2); min-height: 100px; white-space: pre-wrap;">${escapeHtml(app.notes || 'N/A')}</div>
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">CV/Resume</label>
+              ${app.cv_link ? `
+                <a href="${escapeHtml(app.cv_link)}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.1); border: 1px solid rgba(163, 39, 39, 0.3); border-radius: 8px; color: var(--primary, #a32727); text-decoration: none; font-weight: 500;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  View CV/Resume
+                </a>
+              ` : '<div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2); color: var(--muted, #666);">No CV/Resume uploaded</div>'}
+            </div>
+
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Date Submitted</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(submittedDate)}</div>
+            </div>
+
+            ${app.reviewed_at ? `
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary, #a32727);">Reviewed At</label>
+              <div style="padding: 0.875rem 1rem; background: rgba(163, 39, 39, 0.05); border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);">${escapeHtml(reviewedDate)}</div>
+            </div>
+            ` : ''}
+          </div>
+        `;
+
+        // Show modal
+        modal.setAttribute('aria-hidden', 'false');
+        modal.classList.add('modal-open');
+        document.body.style.overflow = 'hidden';
+      }
+
+      /**
+       * Initialize application view modal
+       */
+      function initializeApplicationViewModal() {
+        const modal = document.getElementById('applicationViewModal');
+        const backdrop = document.getElementById('applicationViewModalBackdrop');
+        const closeBtn = document.getElementById('applicationViewModalClose');
+        const footerCloseBtn = document.getElementById('applicationViewCloseBtn');
+
+        const closeModal = () => {
+          modal.setAttribute('aria-hidden', 'true');
+          modal.classList.remove('modal-open');
+          document.body.style.overflow = '';
+        };
+
+        if (backdrop) backdrop.addEventListener('click', closeModal);
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (footerCloseBtn) footerCloseBtn.addEventListener('click', closeModal);
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && modal.classList.contains('modal-open')) {
+            closeModal();
+          }
+        });
+      }
+
+      // Make function globally available for onclick handlers
+      window.viewApplication = viewApplication;
 
       /**
        * Handle CV download
