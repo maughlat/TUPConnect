@@ -2,32 +2,88 @@
 
 This guide provides step-by-step instructions for setting up the complete "Request to Join" workflow in TUPConnect.
 
+**🔄 STARTING FRESH?** If you've already tried setting this up and got confused, start from the beginning with this guide. We'll clean up any mistakes first.
+
 ---
 
 ## Table of Contents
 
-1. [Supabase Storage Bucket Setup](#1-supabase-storage-bucket-setup)
-2. [Database Schema Verification](#2-database-schema-verification)
-3. [Row Level Security (RLS) Policies](#3-row-level-security-rls-policies)
-4. [Email Notifications Setup (Optional)](#4-email-notifications-setup-optional)
-5. [Testing the System](#5-testing-the-system)
+1. [Clean Up Previous Attempts (If Starting Fresh)](#1-clean-up-previous-attempts-if-starting-fresh)
+2. [Supabase Storage Bucket Setup](#2-supabase-storage-bucket-setup)
+3. [Database Schema Verification](#3-database-schema-verification)
+4. [Row Level Security (RLS) Policies](#4-row-level-security-rls-policies)
+5. [Email Notifications Setup (Optional)](#5-email-notifications-setup-optional)
+6. [Testing the System](#6-testing-the-system)
 
 ---
 
-## 1. Supabase Storage Bucket Setup
+## 1. Clean Up Previous Attempts (If Starting Fresh)
 
-### Step 1.1: Access Supabase Dashboard
+If you've already tried setting this up and want to start over, follow these steps:
+
+### Step 1.1: Check Storage Policies
+
+1. Go to **Storage** (left sidebar) → **Files** → **Buckets** → Click on **`applications`** bucket
+2. Click the **"Policies"** tab
+
+**What to DELETE (if found):**
+- ❌ Any policy with names like:
+  - "Allow anonymous application submissions"
+  - "Organization officers can view their applications"
+  - "Organization officers can update their applications"
+  - "Admins can view all applications"
+  
+  **Why?** These are database table policies that were mistakenly created in Storage. They won't work here.
+
+**What to KEEP:**
+- ✅ Policies for file uploads/downloads:
+  - "Allow public access" or "Allow public read" (SELECT command)
+  - "Allow public uploads" or "Allow public insert" (INSERT command)
+  
+  **Why?** These are correct Storage policies needed for CV file uploads.
+
+### Step 1.2: Delete Incorrect Storage Policies
+
+For each incorrect database-like policy in Storage:
+
+1. Click the **ellipsis (⋯)** icon next to the policy
+2. Select **"Delete"** or **"Remove"**
+3. Confirm deletion
+
+### Step 1.3: Check Database Table Policies
+
+1. Go to **Authentication** → **Policies** (left sidebar)
+2. Search for **"applications"** in the search box
+3. You should see the `applications` table listed
+
+**What to do:**
+- If you see existing policies with errors or want to start fresh, you can delete them:
+  1. Click the **ellipsis (⋯)** icon next to each policy
+  2. Select **"Delete"**
+  3. Confirm deletion
+- Or keep them if they're working correctly
+
+### Step 1.4: Verify Clean State
+
+✅ **Storage policies should only have** file-related policies (SELECT for downloads, INSERT for uploads)  
+✅ **Database policies** will be created fresh in the next section
+
+---
+
+## 2. Supabase Storage Bucket Setup
+
+### Step 2.1: Access Supabase Dashboard
 
 1. Go to [https://supabase.com](https://supabase.com)
 2. Sign in to your account
 3. Select your TUPConnect project
 
-### Step 1.2: Navigate to Storage
+### Step 2.2: Navigate to Storage
 
 1. In the left sidebar, click on **"Storage"**
 2. You should see a list of existing buckets (if any)
 
-### Step 1.3: Create New Bucket
+### Step 2.3: Create New Bucket (If Not Exists)
 
 1. Click the **"New bucket"** button (usually at the top right)
 2. Fill in the bucket details:
@@ -41,46 +97,48 @@ This guide provides step-by-step instructions for setting up the complete "Reque
      Or leave empty to allow all file types
 3. Click **"Create bucket"**
 
-### Step 1.4: Configure Bucket Policies (If Needed)
+### Step 2.4: Configure Storage Bucket Policies
 
-If the bucket is not public enough or you need more control:
-
-1. Click on the `applications` bucket you just created
+1. Click on the `applications` bucket you just created (or if it already exists)
 2. Go to the **"Policies"** tab
-3. Click **"New policy"**
-4. Create a policy for **INSERT** operations:
 
-   - **Policy name**: `Allow public uploads`
-   - **Allowed operation**: `INSERT`
-   - **Policy definition**: 
-     ```sql
-     (bucket_id = 'applications'::text)
-     ```
-   - **Target roles**: `anon`, `authenticated`
+**Create Policy 1: Allow Public File Access (Downloads)**
 
-5. Create a policy for **SELECT** operations:
-
+1. Click **"New policy"**
+2. Configure:
    - **Policy name**: `Allow public access`
-   - **Allowed operation**: `SELECT`
+   - **Command**: `SELECT` (or "READ")
+   - **Target roles**: `anon`, `authenticated`
    - **Policy definition**: 
      ```sql
      (bucket_id = 'applications'::text)
      ```
+
+**Create Policy 2: Allow Public File Uploads**
+
+1. Click **"New policy"** again
+2. Configure:
+   - **Policy name**: `Allow public uploads`
+   - **Command**: `INSERT` (or "WRITE")
    - **Target roles**: `anon`, `authenticated`
+   - **Policy definition**: 
+     ```sql
+     (bucket_id = 'applications'::text)
+     ```
 
-6. Click **"Save policy"** for each policy
-
-### Step 1.5: Verify Bucket Access
+### Step 2.5: Verify Bucket Access
 
 1. Check that the bucket is listed in Storage
 2. Confirm the bucket has a **green "Public"** badge
-3. Test by trying to upload a file manually (optional)
+3. Verify you have 2 Storage policies:
+   - ✅ Allow public access (SELECT) - for downloading/viewing files
+   - ✅ Allow public uploads (INSERT) - for uploading files
 
 ---
 
-## 2. Database Schema Verification
+## 3. Database Schema Verification
 
-### Step 2.1: Verify Applications Table Exists
+### Step 3.1: Verify Applications Table Exists
 
 1. In Supabase Dashboard, go to **"Table Editor"** (left sidebar)
 2. Look for a table named **`applications`**
@@ -108,7 +166,7 @@ CREATE TABLE IF NOT EXISTS applications (
 );
 ```
 
-### Step 2.2: Verify Application Status Type Exists
+### Step 3.2: Verify Application Status Type Exists
 
 1. Go to **SQL Editor** in Supabase Dashboard
 2. Run this query to check if the enum type exists:
@@ -125,7 +183,7 @@ SELECT EXISTS (
 CREATE TYPE application_status_type AS ENUM ('Pending', 'Approved', 'Rejected');
 ```
 
-### Step 2.3: Verify Column Names Match
+### Step 3.3: Verify Column Names Match
 
 Check that your `applications` table has these exact column names:
 
@@ -146,94 +204,144 @@ If any column names differ, update them in the database or update the code in `r
 
 ---
 
-## 3. Row Level Security (RLS) Policies
+## 4. Row Level Security (RLS) Policies
 
-### Step 3.1: Enable RLS on Applications Table
+**⚠️ CRITICAL**: These policies are for the **DATABASE TABLE** (`applications` table), NOT the Storage bucket!
 
-1. Go to **Table Editor** → **`applications`** table
-2. Click on **"Policies"** tab
-3. If RLS is not enabled, click **"Enable RLS"** at the top
+**Location**: **Authentication** → **Policies** → Search for "applications" → Click on `applications` table
 
-### Step 3.2: Create Policy for Anonymous Inserts (Form Submissions)
+### Step 4.1: Navigate to Policies
+
+1. Go to **Authentication** (left sidebar in Supabase Dashboard)
+2. Click on **"Policies"** (under CONFIGURATION section)
+3. In the search box, type **"applications"**
+4. You should see the `applications` table listed
+5. Click on the `applications` table to see its policies
+6. If RLS is not enabled, you'll see a button to **"Enable RLS"** - click it
+
+### Step 4.2: Create Policy for Anonymous Inserts (Form Submissions)
 
 This allows students to submit applications without being logged in:
 
-1. Click **"New policy"**
-2. Select **"Create policy from scratch"**
-3. Configure the policy:
+1. Click **"Create policy"** button (top right of the applications table policies section)
+2. The policy creation form will open. Configure it:
 
    - **Policy name**: `Allow anonymous application submissions`
-   - **Allowed operation**: `INSERT`
-   - **Target roles**: `anon`
-   - **Policy definition (USING expression)**: Leave empty or use:
+   - **Table on clause**: Should already show `public.applications` (if not, select it)
+   - **Policy Behavior as clause**: Keep as `Permissive`
+   - **Policy Command for clause**: Select **`INSERT`** (radio button)
+   - **Target Roles to clause**: Click the dropdown and select **`anon`** (or type it in)
+   - **In the code editor (USING expression)**: Replace the placeholder with:
      ```sql
      true
      ```
-   - **Policy definition (WITH CHECK expression)**: 
+   - **WITH CHECK expression** (if shown in the editor): Also use:
      ```sql
      true
      ```
 
-4. Click **"Review"** then **"Save policy"**
+3. Click **"Save policy"** button (green button at the bottom)
 
-### Step 3.3: Create Policy for Organization Officers to View Their Applications
+### Step 4.3: Create Policy for Organization Officers to View Their Applications
 
 This allows organization officers to view only applications for their organization:
 
-1. Click **"New policy"** again
-2. Select **"Create policy from scratch"**
-3. Configure the policy:
+1. Click **"Create policy"** button again
+2. Configure the policy:
 
    - **Policy name**: `Organization officers can view their applications`
-   - **Allowed operation**: `SELECT`
-   - **Target roles**: `authenticated`
-   - **Policy definition (USING expression)**: 
+   - **Table on clause**: Should show `public.applications`
+   - **Policy Behavior as clause**: Keep as `Permissive`
+   - **Policy Command for clause**: Select **`SELECT`** (radio button)
+   - **Target Roles to clause**: Select **`authenticated`** (type or select from dropdown)
+   - **In the code editor (USING expression)**: Replace the placeholder with:
      ```sql
      EXISTS (
-       SELECT 1 FROM user_roles
+       SELECT 1
+       FROM user_roles
        WHERE user_roles.user_id = auth.uid()
-       AND user_roles.organization_id = applications.organization_id
-       AND user_roles.role = 'org_officer'
+         AND user_roles.organization_id = organization_id
+         AND user_roles.role = 'org_officer'
      )
      ```
+     
+     **Important**: When writing RLS policies, you can reference the table columns directly (like `organization_id`) without the table name prefix in the subquery.
 
-4. Click **"Review"** then **"Save policy"**
+   - **WITH CHECK expression**: For SELECT policies, you can leave this empty or ignore it
 
-### Step 3.4: Create Policy for Organization Officers to Update Applications
+3. Click **"Save policy"** button
+
+**Alternative if the above doesn't work**: Use this simpler version:
+```sql
+(organization_id IN (
+  SELECT organization_id 
+  FROM user_roles 
+  WHERE user_id = auth.uid() 
+    AND role = 'org_officer'
+))
+```
+
+### Step 4.4: Create Policy for Organization Officers to Update Applications
 
 This allows organization officers to approve/reject applications:
 
-1. Click **"New policy"** again
-2. Select **"Create policy from scratch"**
-3. Configure the policy:
+1. Click **"Create policy"** button again
+2. Configure the policy:
 
    - **Policy name**: `Organization officers can update their applications`
-   - **Allowed operation**: `UPDATE`
-   - **Target roles**: `authenticated`
-   - **Policy definition (USING expression)**: 
+   - **Table on clause**: Should show `public.applications`
+   - **Policy Behavior as clause**: Keep as `Permissive`
+   - **Policy Command for clause**: Select **`UPDATE`** (radio button)
+   - **Target Roles to clause**: Select **`authenticated`**
+   - **In the code editor (USING expression)**: Replace the placeholder with:
      ```sql
      EXISTS (
-       SELECT 1 FROM user_roles
+       SELECT 1
+       FROM user_roles
        WHERE user_roles.user_id = auth.uid()
-       AND user_roles.organization_id = applications.organization_id
-       AND user_roles.role = 'org_officer'
+         AND user_roles.organization_id = organization_id
+         AND user_roles.role = 'org_officer'
+     )
+     ```
+     
+     **Note**: Use `organization_id` directly without the table prefix in the subquery.
+
+   - **WITH CHECK expression**: For UPDATE policies, you can use the same expression:
+     ```sql
+     EXISTS (
+       SELECT 1
+       FROM user_roles
+       WHERE user_roles.user_id = auth.uid()
+         AND user_roles.organization_id = organization_id
+         AND user_roles.role = 'org_officer'
      )
      ```
 
-4. Click **"Review"** then **"Save policy"**
+3. Click **"Save policy"** button
 
-### Step 3.5: (Optional) Create Policy for Admins
+**Alternative if the above doesn't work**: Use this simpler version:
+```sql
+(organization_id IN (
+  SELECT organization_id 
+  FROM user_roles 
+  WHERE user_id = auth.uid() 
+    AND role = 'org_officer'
+))
+```
+
+### Step 4.5: (Optional) Create Policy for Admins
 
 If you want admins to view all applications:
 
-1. Click **"New policy"** again
-2. Select **"Create policy from scratch"**
-3. Configure the policy:
+1. Click **"Create policy"** button again
+2. Configure the policy:
 
    - **Policy name**: `Admins can view all applications`
-   - **Allowed operation**: `SELECT`
-   - **Target roles**: `authenticated`
-   - **Policy definition (USING expression)**: 
+   - **Table on clause**: Should show `public.applications`
+   - **Policy Behavior as clause**: Keep as `Permissive`
+   - **Policy Command for clause**: Select **`SELECT`** (radio button)
+   - **Target Roles to clause**: Select **`authenticated`**
+   - **In the code editor (USING expression)**: Replace the placeholder with:
      ```sql
      EXISTS (
        SELECT 1 FROM user_roles
@@ -241,24 +349,38 @@ If you want admins to view all applications:
        AND user_roles.role = 'admin'
      )
      ```
+   - **WITH CHECK expression**: For SELECT policies, leave this empty or ignore any auto-generated content
 
-4. Click **"Review"** then **"Save policy"**
+3. **Important**: For SELECT policies, you only need the **USING expression**. If the interface auto-generates a `WITH CHECK (0)` clause, delete it or leave it empty - SELECT policies don't need WITH CHECK.
 
-### Step 3.6: Verify Policies
+4. Click **"Save policy"** button
 
-1. Go back to the **Policies** tab
-2. You should see at least 3 policies:
-   - ✅ Allow anonymous application submissions (INSERT)
-   - ✅ Organization officers can view their applications (SELECT)
-   - ✅ Organization officers can update their applications (UPDATE)
+**Note**: If you get a syntax error mentioning `WITH CHECK`, make sure you've removed or left empty any WITH CHECK clause for SELECT policies.
+
+### Step 4.6: Verify Policies
+
+**📍 Where to Check**: Go to **Authentication** → **Policies** → Search "applications" → Click on `applications` table
+
+1. Navigate to: **Authentication** → **Policies** → Search "applications" → Click on `applications` table
+2. You should see at least 3 policies for the **`applications` TABLE**:
+   - ✅ Allow anonymous application submissions (INSERT) - Target: `anon`
+   - ✅ Organization officers can view their applications (SELECT) - Target: `authenticated`
+   - ✅ Organization officers can update their applications (UPDATE) - Target: `authenticated`
+   - ✅ (Optional) Admins can view all applications (SELECT) - Target: `authenticated`
+
+**Important Distinction**:
+- **Storage policies** (Step 2): Control file uploads/downloads → Location: **Storage** > Buckets > applications > Policies
+- **Database policies** (Step 4): Control database row access → Location: **Authentication** > Policies > applications table
+
+Both are needed, but in DIFFERENT locations!
 
 ---
 
-## 4. Email Notifications Setup (Optional)
+## 5. Email Notifications Setup (Optional)
 
 ### Option A: Using Supabase Edge Functions (Recommended)
 
-#### Step 4.1: Install Supabase CLI
+#### Step 5.1: Install Supabase CLI
 
 1. Install the Supabase CLI:
    ```bash
@@ -276,7 +398,7 @@ If you want admins to view all applications:
    ```
    (Find your project ref in Supabase Dashboard → Settings → API)
 
-#### Step 4.2: Create Edge Function
+#### Step 5.2: Create Edge Function
 
 1. Create a new Edge Function:
    ```bash
@@ -341,43 +463,22 @@ serve(async (req) => {
 })
 ```
 
-#### Step 4.3: Deploy Edge Function
+#### Step 5.3: Deploy Edge Function
 
 ```bash
 supabase functions deploy send-application-email
 ```
 
-#### Step 4.4: Set Environment Variables
+#### Step 5.4: Set Environment Variables
 
 1. In Supabase Dashboard → **Edge Functions** → **Settings**
 2. Add secret: `RESEND_API_KEY` (get API key from [resend.com](https://resend.com))
 
-#### Step 4.5: Update Organization Portal Code
+#### Step 5.5: Update Organization Portal Code
 
-In `organization-portal.html`, update the `updateApplicationStatus` function:
+In `components/organization-portal.html`, update the `updateApplicationStatus` function to call the Edge Function after approval.
 
-```javascript
-// After successful database update, add:
-if (newStatus === 'Approved') {
-  // Call Edge Function to send email
-  const { data, error } = await supabase.functions.invoke('send-application-email', {
-    body: {
-      to: app.personal_email,
-      studentName: app.student_name,
-      orgName: currentOrganization?.name || 'Organization',
-      status: newStatus
-    }
-  });
-  
-  if (error) {
-    console.error('Error sending email:', error);
-  }
-}
-```
-
-### Option B: Using Supabase Database Triggers (Simpler)
-
-#### Step 4.1: Create Database Function for Email
+### Option B: Using Database Triggers (Simpler)
 
 Go to **SQL Editor** and run:
 
@@ -403,13 +504,13 @@ FOR EACH ROW
 EXECUTE FUNCTION send_application_email();
 ```
 
-**Note**: This is a placeholder. For actual email sending, integrate with an email service API or use Supabase's built-in email features.
+**Note**: This is a placeholder. For actual email sending, integrate with an email service API.
 
 ---
 
-## 5. Testing the System
+## 6. Testing the System
 
-### Step 5.1: Test Anonymous Form Submission
+### Step 6.1: Test Anonymous Form Submission
 
 1. Go to `http://your-domain/components/browse.html` (or your production URL)
 2. Click on an organization card to open the modal
@@ -424,7 +525,7 @@ EXECUTE FUNCTION send_application_email();
    - ✅ File is uploaded to Storage bucket
    - ✅ Application record appears in database
 
-### Step 5.2: Test Organization Portal View
+### Step 6.2: Test Organization Portal View
 
 1. Log in as an organization officer
 2. Navigate to **"Application Review"** section
@@ -434,7 +535,7 @@ EXECUTE FUNCTION send_application_email();
    - ✅ Student information is displayed correctly
    - ✅ CV links work and open files
 
-### Step 5.3: Test View Application Modal
+### Step 6.3: Test View Application Modal
 
 1. In Application Review section, click the **eye icon** (View) button
 2. Verify:
@@ -444,7 +545,7 @@ EXECUTE FUNCTION send_application_email();
    - ✅ CV link works
    - ✅ Modal closes with ESC key or close button
 
-### Step 5.4: Test Approve/Reject Actions
+### Step 6.4: Test Approve/Reject Actions
 
 1. Click the **checkmark** (Approve) or **X** (Reject) button on a pending application
 2. Verify:
@@ -454,7 +555,7 @@ EXECUTE FUNCTION send_application_email();
    - ✅ Table refreshes with updated status
    - ✅ Action buttons disappear after status change
 
-### Step 5.5: Test Storage Access
+### Step 6.5: Test Storage Access
 
 1. Try accessing a CV file URL directly (from database or Storage)
 2. Verify:
@@ -480,6 +581,7 @@ EXECUTE FUNCTION send_application_email();
 - Verify `organization_id` matches in applications table
 - Check RLS policies allow SELECT for authenticated users with `org_officer` role
 - Verify user has `user_roles` record with correct `organization_id`
+- Check that policies are in **Authentication > Policies** (not Storage)
 
 ### Issue: Cannot approve/reject applications
 
@@ -487,6 +589,14 @@ EXECUTE FUNCTION send_application_email();
 - Check RLS policy allows UPDATE for `org_officer` role
 - Verify user is logged in and has correct role
 - Check browser console for error messages
+- Verify policies are in **Authentication > Policies** (not Storage)
+
+### Issue: Error "syntax error at or near )" when creating SELECT policy
+
+**Solution**:
+- For SELECT policies, only fill in the USING expression
+- Delete or leave empty any WITH CHECK clause that auto-generates
+- SELECT policies don't need WITH CHECK
 
 ### Issue: Email notifications not working
 
@@ -502,8 +612,8 @@ EXECUTE FUNCTION send_application_email();
 
 Before going to production, verify:
 
-- ✅ Storage bucket has appropriate access policies
-- ✅ RLS policies prevent unauthorized access
+- ✅ Storage bucket has appropriate access policies (for file uploads)
+- ✅ Database RLS policies prevent unauthorized access (in Authentication > Policies)
 - ✅ Anonymous users can only INSERT applications
 - ✅ Organization officers can only view/update their own organization's applications
 - ✅ File uploads are validated (size, type)
@@ -513,16 +623,24 @@ Before going to production, verify:
 
 ---
 
-## Additional Resources
+## Summary: Two Types of Policies
 
-- [Supabase Storage Documentation](https://supabase.com/docs/guides/storage)
-- [Supabase RLS Documentation](https://supabase.com/docs/guides/auth/row-level-security)
-- [Supabase Edge Functions Documentation](https://supabase.com/docs/guides/functions)
-- [Resend Email API](https://resend.com/docs)
+**Remember**: There are TWO separate policy systems:
+
+1. **Storage Policies** (for files):
+   - Location: **Storage** > Buckets > `applications` > Policies
+   - Purpose: Control who can upload/download CV files
+   - Commands: SELECT (download), INSERT (upload)
+
+2. **Database RLS Policies** (for data):
+   - Location: **Authentication** > Policies > `applications` table
+   - Purpose: Control who can INSERT/SELECT/UPDATE database rows
+   - Commands: INSERT (submit), SELECT (view), UPDATE (approve/reject)
+
+Both are needed, but they're completely separate and in different locations!
 
 ---
 
 **Last Updated**: 2024
 
-**Version**: 1.0
-
+**Version**: 2.0 (Clean Start Guide)
