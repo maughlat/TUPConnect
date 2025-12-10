@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restore Admin Account</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #a32727;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #a32727;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #8a1f1f;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Restore Admin Account</h1>
+        <p>This tool will help you restore your admin account:</p>
+        <ul>
+            <li><strong>Email:</strong> <code>veliganioandrian@gmail.com</code></li>
+            <li><strong>Password:</strong> <code>123456</code></li>
+        </ul>
+
+        <button id="createUserBtn">Step 1: Create User Account</button>
+        <button id="assignRoleBtn" disabled>Step 2: Assign Admin Role</button>
+        <button id="verifyBtn" disabled>Step 3: Verify Account</button>
+
+        <div id="result"></div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <h3>Note:</h3>
+            <p>After creating the user, you may need to run the SQL in Supabase to assign the admin role if Step 2 doesn't work.</p>
+            <p>See <code>database/assign_admin_role.sql</code> for the SQL script.</p>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        const adminEmail = 'veliganioandrian@gmail.com';
+        const adminPassword = '123456';
+
+        const resultDiv = document.getElementById('result');
+        const createBtn = document.getElementById('createUserBtn');
+        const assignBtn = document.getElementById('assignRoleBtn');
+        const verifyBtn = document.getElementById('verifyBtn');
+
+        function showResult(message, type) {
+            resultDiv.textContent = message;
+            resultDiv.className = type;
+            resultDiv.style.display = 'block';
+        }
+
+        // Step 1: Create User Account
+        createBtn.addEventListener('click', async () => {
+            createBtn.disabled = true;
+            showResult('Creating user account...', 'info');
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: adminEmail,
+                    password: adminPassword,
+                    options: {
+                        data: {
+                            role: 'admin'
+                        }
+                    }
+                });
+
+                if (error) {
+                    if (error.message.includes('already registered') || error.message.includes('already exists')) {
+                        showResult('✅ User already exists! You can proceed to Step 2.', 'success');
+                        assignBtn.disabled = false;
+                    } else {
+                        showResult(`❌ Error: ${error.message}\n\nIf email confirmation is required, you may need to create the user via Supabase Dashboard instead.`, 'error');
+                        createBtn.disabled = false;
+                    }
+                } else {
+                    showResult('✅ User account created successfully!\n\nNote: If email confirmation is enabled, you may need to confirm the email or create the user via Supabase Dashboard.', 'success');
+                    assignBtn.disabled = false;
+                }
+            } catch (error) {
+                showResult(`❌ Unexpected error: ${error.message}`, 'error');
+                createBtn.disabled = false;
+            }
+        });
+
+        // Step 2: Assign Admin Role
+        assignBtn.addEventListener('click', async () => {
+            assignBtn.disabled = true;
+            showResult('Assigning admin role...', 'info');
+
+            try {
+                // First, get the user ID
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (!user) {
+                    // Try to get user by checking if we can login
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email: adminEmail,
+                        password: adminPassword
+                    });
+
+                    if (signInError || !signInData.user) {
+                        showResult('❌ Could not authenticate user. Please run this SQL in Supabase SQL Editor:\n\n' +
+                            `INSERT INTO user_roles (user_id, role)\n` +
+                            `SELECT id, 'admin'\n` +
+                            `FROM auth.users\n` +
+                            `WHERE email = '${adminEmail}'\n` +
+                            `ON CONFLICT (user_id) DO UPDATE SET role = 'admin';`, 'error');
+                        assignBtn.disabled = false;
+                        return;
+                    }
+
+                    // Insert admin role
+                    const { error: roleError } = await supabase
+                        .from('user_roles')
+                        .upsert({
+                            user_id: signInData.user.id,
+                            role: 'admin'
+                        }, {
+                            onConflict: 'user_id'
+                        });
+
+                    if (roleError) {
+                        showResult('❌ Could not assign role via API. Please run this SQL in Supabase SQL Editor:\n\n' +
+                            `INSERT INTO user_roles (user_id, role)\n` +
+                            `SELECT id, 'admin'\n` +
+                            `FROM auth.users\n` +
+                            `WHERE email = '${adminEmail}'\n` +
+                            `ON CONFLICT (user_id) DO UPDATE SET role = 'admin';`, 'error');
+                        assignBtn.disabled = false;
+                        return;
+                    }
+
+                    showResult('✅ Admin role assigned successfully!', 'success');
+                    verifyBtn.disabled = false;
+                } else {
+                    // User is already logged in
+                    const { error: roleError } = await supabase
+                        .from('user_roles')
+                        .upsert({
+                            user_id: user.id,
+                            role: 'admin'
+                        }, {
+                            onConflict: 'user_id'
+                        });
+
+                    if (roleError) {
+                        showResult('❌ Could not assign role. Please run the SQL in Supabase SQL Editor.', 'error');
+                        assignBtn.disabled = false;
+                        return;
+                    }
+
+                    showResult('✅ Admin role assigned successfully!', 'success');
+                    verifyBtn.disabled = false;
+                }
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}\n\nPlease run this SQL in Supabase SQL Editor:\n\n` +
+                    `INSERT INTO user_roles (user_id, role)\n` +
+                    `SELECT id, 'admin'\n` +
+                    `FROM auth.users\n` +
+                    `WHERE email = '${adminEmail}'\n` +
+                    `ON CONFLICT (user_id) DO UPDATE SET role = 'admin';`, 'error');
+                assignBtn.disabled = false;
+            }
+        });
+
+        // Step 3: Verify Account
+        verifyBtn.addEventListener('click', async () => {
+            verifyBtn.disabled = true;
+            showResult('Verifying account...', 'info');
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: adminEmail,
+                    password: adminPassword
+                });
+
+                if (error) {
+                    showResult(`❌ Login failed: ${error.message}`, 'error');
+                    verifyBtn.disabled = false;
+                    return;
+                }
+
+                // Check admin role
+                const { data: roleData, error: roleError } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', data.user.id)
+                    .single();
+
+                if (roleError || !roleData || roleData.role !== 'admin') {
+                    showResult('⚠️ User exists but admin role not found. Please run the SQL to assign the role.', 'error');
+                    verifyBtn.disabled = false;
+                    return;
+                }
+
+                showResult('✅ SUCCESS! Admin account is fully restored and verified.\n\nYou can now login at: https://tupconnect.vercel.app/components/login.html', 'success');
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'error');
+                verifyBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
+

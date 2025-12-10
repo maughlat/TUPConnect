@@ -394,45 +394,94 @@
           }
 
           const userId = authData.user.id;
+          const userEmail = authData.user.email;
+
+          console.log('=== LOGIN DEBUG ===');
+          console.log('User ID:', userId);
+          console.log('User Email:', userEmail);
+          console.log('Selected Role:', currentRole);
 
           // Step 2: Query user_roles table to get the user's actual role
           const { data: userRoleData, error: roleError } = await window.supabase
             .from('user_roles')
             .select('role, organization_id')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle(); // Use maybeSingle() instead of single() to avoid throwing if not found
 
-          if (roleError || !userRoleData) {
+          if (roleError) {
+            console.error('Error querying user_roles:', roleError);
             await window.supabase.auth.signOut();
-            throw new Error('User role not found. Please contact an administrator.');
+            throw new Error('Error checking user role. Please contact an administrator.');
+          }
+
+          // If no role found, try to create it automatically (for organization officers)
+          if (!userRoleData) {
+            console.log('No user_roles record found. Attempting to create it...');
+            
+            // Check if user's email matches an organization email
+            const { data: orgData, error: orgCheckError } = await window.supabase
+              .from('organizations')
+              .select('id, name, email, account_status')
+              .eq('email', userEmail)
+              .maybeSingle();
+
+            if (orgCheckError) {
+              console.error('Error checking organization:', orgCheckError);
+            }
+
+            if (orgData && orgData.account_status === 'Account Activated') {
+              // User's email matches an activated organization - create org_officer role
+              console.log('Organization found for email. Creating org_officer role...');
+              const { data: newRoleData, error: createRoleError } = await window.supabase
+                .from('user_roles')
+                .insert({
+                  user_id: userId,
+                  organization_id: orgData.id,
+                  role: 'org_officer'
+                })
+                .select()
+                .single();
+
+              if (createRoleError) {
+                console.error('Error creating user role:', createRoleError);
+                await window.supabase.auth.signOut();
+                throw new Error('User role not found and could not be created automatically. Please contact an administrator.');
+              }
+
+              // Use the newly created role
+              userRoleData = newRoleData;
+              console.log('✓ User role created automatically:', userRoleData.role);
+            } else {
+              // No matching organization found - user needs admin role
+              console.error('No matching organization found for user email');
+              await window.supabase.auth.signOut();
+              throw new Error('User role not found. This account needs to be assigned a role. Please contact an administrator.');
+            }
           }
 
           const actualRole = userRoleData.role;
 
-          // Step 3: Normalize role values for comparison
-          const normalizedLoginRole = currentRole === 'officer' ? 'org_officer' : currentRole;
-          const normalizedActualRole = actualRole;
+          console.log('User Role:', actualRole);
+          console.log('Organization ID:', userRoleData.organization_id);
 
-          // Step 4: Verify role matches
-          if (normalizedActualRole !== normalizedLoginRole) {
-            await window.supabase.auth.signOut();
-            throw new Error(`Access denied. This account is registered as ${actualRole === 'org_officer' ? 'Organization Officer' : 'Administrator'}. Please select the correct role.`);
-          }
-
-          // Step 5: Role matches - redirect to appropriate dashboard
+          // Step 3: Redirect based on actual role (ignore the selected role button)
+          // This allows automatic role detection
           if (actualRole === 'admin') {
+            console.log('Redirecting to admin dashboard...');
             window.location.href = 'admin-dashboard.html';
           } else if (actualRole === 'org_officer') {
+            console.log('Redirecting to organization portal...');
+            // Store organization ID in localStorage for the portal
+            if (userRoleData.organization_id) {
+              localStorage.setItem('tupconnect_organization_id', userRoleData.organization_id);
+            }
             window.location.href = 'organization-portal.html';
           } else {
-            throw new Error('Unrecognized user role');
+            await window.supabase.auth.signOut();
+            throw new Error('Unrecognized user role: ' + actualRole);
           }
           
-          // If login failed, re-enable button
-          if (!result.success) {
-            submitButton.disabled = false;
-            submitButton.textContent = originalButtonText;
-          }
+          // If we reach here, redirect is happening, button will be re-enabled on error only
         } catch (error) {
           console.error('Login error:', error);
           

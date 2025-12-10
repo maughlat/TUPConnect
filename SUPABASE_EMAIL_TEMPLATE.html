@@ -11,8 +11,9 @@
   
   Variables used:
   - {{ .Email }} - The recipient's email address
-  - {{ .RedirectTo }} - The redirect URL (automatically populated by Supabase)
-  - {{ .URL }} - Full URL with token (fallback link)
+  - {{ .ConfirmationURL }} - The full activation link WITH tokens (USE THIS!)
+  - {{ .RedirectTo }} - The redirect URL (may not include tokens - DON'T USE)
+  - {{ .URL }} - Alternative variable for full URL with tokens
 -->
 
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
@@ -29,13 +30,13 @@
     <p>To complete the setup and gain access to manage your organization's profile and student applications, please click the button below to <b>set your initial password</b>.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-        <a href="{{ .RedirectTo }}" style="background-color: #800000; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;"> 
+        <a href="{{ .ConfirmationURL }}" style="background-color: #800000; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;"> 
             Set Your Organization Portal Password
         </a>
     </div>
     
     <p>If the button doesn't work, copy and paste this link into your browser:</p>
-    <p style="word-break: break-all; font-size: 12px; color: #555;">{{ .URL }}</p>
+    <p style="word-break: break-all; font-size: 12px; color: #555;">{{ .ConfirmationURL }}</p>
     <br>
     <p>This link will redirect you to the <b>Setup Password Page</b> (<code>setup_password.html</code>) in the TUPConnect system.</p>
     

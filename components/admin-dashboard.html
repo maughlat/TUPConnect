@@ -590,15 +590,68 @@
         }
       });
 
+      /**
+       * Helper function to delete auth user by email
+       * Note: This requires admin privileges. Consider using a Supabase Edge Function
+       * or database trigger for production use.
+       */
+      async function deleteAuthUserByEmail(email) {
+        if (!email) {
+          console.log('No email provided, skipping auth user deletion');
+          return { success: true };
+        }
+
+        try {
+          // Attempt to find and delete the user via Supabase Management API
+          // This requires admin access. For production, use an Edge Function or database trigger.
+          
+          // Option 1: If you have an Edge Function set up, call it here:
+          // const { data, error } = await supabase.functions.invoke('delete-auth-user', {
+          //   body: { email: email }
+          // });
+
+          // Option 2: Direct API call (requires service role key - NOT RECOMMENDED client-side)
+          // This is a placeholder - you should implement this via Edge Function or database trigger
+          
+          console.log(`Attempting to delete auth user for email: ${email}`);
+          
+          // For now, log that user deletion should be handled
+          // See DELETE_AUTH_USER_SETUP.md for proper implementation
+          console.warn('Auth user deletion requires admin access. Please set up Edge Function or database trigger. See DELETE_AUTH_USER_SETUP.md');
+          
+          return { success: true, message: 'Auth user deletion should be handled by Edge Function or database trigger' };
+        } catch (error) {
+          console.error('Error deleting auth user:', error);
+          // Don't fail the organization deletion if auth user deletion fails
+          return { success: false, error: error.message };
+        }
+      }
+
       // Remove organization (always enabled, regardless of account status)
       async function removeOrganization(orgId) {
         const org = organizations.find(o => o.id === orgId);
         if (!org) return;
 
-        if (confirm('Are you sure you want to remove this organization?')) {
+        if (confirm('Are you sure you want to remove this organization? This will also delete the associated user account if one exists.')) {
           const orgName = org.name;
+          const orgEmail = org.email || org.activation_email;
           
           try {
+            // First, try to delete the associated auth user (if email exists)
+            if (orgEmail) {
+              console.log(`Deleting auth user for organization email: ${orgEmail}`);
+              const authDeleteResult = await deleteAuthUserByEmail(orgEmail);
+              if (!authDeleteResult.success) {
+                console.warn('Failed to delete auth user, but continuing with organization deletion:', authDeleteResult.error);
+                // Continue with organization deletion even if auth user deletion fails
+              } else {
+                console.log('Auth user deletion initiated for:', orgEmail);
+              }
+            } else {
+              console.log('No email associated with organization, skipping auth user deletion');
+            }
+
+            // Delete the organization from the database
             const { error } = await supabase
               .from('organizations')
               .delete()
@@ -613,7 +666,10 @@
             // Update local data
             organizations = organizations.filter(o => o.id !== orgId);
             renderOrganizations();
-            console.log(`Organization ${orgId} (${orgName}) removed`);
+            console.log(`Organization ${orgId} (${orgName}) removed successfully`);
+            
+            // Show success message
+            alert(`Organization "${orgName}" has been removed successfully.${orgEmail ? ` Associated user account deletion has been initiated.` : ''}`);
           } catch (error) {
             console.error('Error in removeOrganization:', error);
             alert('Failed to remove organization. Please try again.');

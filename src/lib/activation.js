@@ -121,10 +121,10 @@ async function triggerAccountActivation(orgEmail, redirectUrl = null, supabaseCl
             console.log('User might already exist. Proceeding with password reset...');
             // Continue to password reset flow below
           } else {
-            return {
-              success: false,
+          return {
+            success: false,
               error: `Failed to create account: ${signUpError.message || 'User creation failed'}. Note: Make sure email confirmation is disabled in Supabase settings to prevent invitation emails.`
-            };
+          };
           }
         } else {
           console.log('User account created successfully.');
