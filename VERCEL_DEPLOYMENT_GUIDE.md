@@ -258,7 +258,7 @@ If needed, create a `vercel.json` file in your project root:
 3. Check browser console for specific error messages
 4. Ensure CORS is enabled in Supabase (should be by default)
 
-### Issue: Activation Email Links Dont Work
+### Issue: Activation Email Links Don't Work
 
 **Problem:** Clicking activation email link shows error.
 
