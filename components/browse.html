@@ -212,13 +212,7 @@
       const modalClose = document.getElementById("modalClose");
       const modalContent = document.getElementById("modalContent");
 
-      // Helper function to escape HTML
-      const escapeHtml = (text) => {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      };
+      // Note: escapeHtml is already defined in student-orgs.js, so we can use it directly
 
       function openModal(org) {
         // Handle both old club format and new org format from Supabase
