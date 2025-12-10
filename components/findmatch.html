@@ -174,8 +174,15 @@
 
       // Helper functions
       function buildLogoPath(club) {
-        const base = `../assets/${club.logo || "default"}`;
-        return { primary: `${base}.png`, fallback: `${base}.jpg` };
+        // Support both Supabase Storage URLs and local file paths
+        if (club.logo && (club.logo.startsWith('http://') || club.logo.startsWith('https://'))) {
+          // Full URL from Supabase Storage - use directly
+          return { primary: club.logo, fallback: club.logo };
+        } else {
+          // Legacy local file path format
+          const base = `../assets/${club.logo || "default"}`;
+          return { primary: `${base}.png`, fallback: `${base}.jpg` };
+        }
       }
 
       // State management
@@ -368,8 +375,15 @@
       const modalContent = document.getElementById("modalContent");
 
       function buildLogoPath(club) {
-        const base = `../assets/${club.logo || "default"}`;
-        return { primary: `${base}.png`, fallback: `${base}.jpg` };
+        // Support both Supabase Storage URLs and local file paths
+        if (club.logo && (club.logo.startsWith('http://') || club.logo.startsWith('https://'))) {
+          // Full URL from Supabase Storage - use directly
+          return { primary: club.logo, fallback: club.logo };
+        } else {
+          // Legacy local file path format
+          const base = `../assets/${club.logo || "default"}`;
+          return { primary: `${base}.png`, fallback: `${base}.jpg` };
+        }
       }
 
       function openModal(org) {

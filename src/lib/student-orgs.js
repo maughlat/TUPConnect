@@ -146,10 +146,19 @@ async function fetchAndRenderOrgs(targetElementId, isMatchView = false) {
  * }, 85);
  */
 function renderOrgCardHTML(orgData, matchPercentage = null) {
-  // Build logo path
-  const logoBase = `../assets/${orgData.logo || 'TUP_DEFAULT'}`;
-  const logoPrimary = `${logoBase}.png`;
-  const logoFallback = `${logoBase}.jpg`;
+  // Build logo path - support both Supabase Storage URLs and local file paths
+  let logoPrimary, logoFallback;
+  
+  if (orgData.logo && (orgData.logo.startsWith('http://') || orgData.logo.startsWith('https://'))) {
+    // Full URL from Supabase Storage - use directly
+    logoPrimary = orgData.logo;
+    logoFallback = orgData.logo; // Same URL for fallback
+  } else {
+    // Legacy local file path format
+    const logoBase = `../assets/${orgData.logo || 'TUP_DEFAULT'}`;
+    logoPrimary = `${logoBase}.png`;
+    logoFallback = `${logoBase}.jpg`;
+  }
 
   // Get primary category
   const primaryCategory = (orgData.categories && orgData.categories.length > 0) 
