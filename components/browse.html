@@ -85,16 +85,16 @@
         <div class="filter-group">
           <span class="filter-label">Category</span>
           <div class="filter-chips" id="categoryFilters">
-            <button type="button" data-cat="Academic" class="chip">Academic</button>
-            <button type="button" data-cat="Technology" class="chip">
-              Technology
-            </button>
-            <button type="button" data-cat="Arts" class="chip">Arts</button>
-            <button type="button" data-cat="Service" class="chip">Service</button>
-            <button type="button" data-cat="Community" class="chip">
-              Community
-            </button>
-            <button type="button" data-cat="Gaming" class="chip">Gaming</button>
+            <button type="button" data-cat="Academic/Research" class="chip">Academic/Research</button>
+            <button type="button" data-cat="Technology/IT/Gaming" class="chip">Technology/IT/Gaming</button>
+            <button type="button" data-cat="Engineering/Built Env." class="chip">Engineering/Built Env.</button>
+            <button type="button" data-cat="Arts/Design/Media" class="chip">Arts/Design/Media</button>
+            <button type="button" data-cat="Leadership/Governance" class="chip">Leadership/Governance</button>
+            <button type="button" data-cat="Service/Welfare/Outreach" class="chip">Service/Welfare/Outreach</button>
+            <button type="button" data-cat="Entrepreneurship/Finance" class="chip">Entrepreneurship/Finance</button>
+            <button type="button" data-cat="Industrial/Applied Skills" class="chip">Industrial/Applied Skills</button>
+            <button type="button" data-cat="Social Justice/Advocacy" class="chip">Social Justice/Advocacy</button>
+            <button type="button" data-cat="Culture/Religion" class="chip">Culture/Religion</button>
           </div>
         </div>
       </div>
@@ -213,11 +213,23 @@
       const modalClose = document.getElementById("modalClose");
       const modalContent = document.getElementById("modalContent");
 
+      // Helper function to escape HTML
+      const escapeHtml = (text) => {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+
       function openModal(org) {
         // Handle both old club format and new org format from Supabase
         const club = org;
         const logo = buildLogoPath(club);
-        const primaryCategory = (club.categories && club.categories.length > 0) ? club.categories[0] : "Academic";
+        // Handle categories - display all categories
+        const categories = Array.isArray(club.categories) && club.categories.length > 0 
+          ? club.categories 
+          : ["Academic/Research"];
+        const primaryCategory = categories[0];
         const email = club.email || "contact@tup.edu.ph";
         const facultyAdvisor = club.facultyAdvisor || "To be announced";
         const memberCount = club.memberCount || "50+";
@@ -234,6 +246,11 @@
         // Handle affiliation - can be string or array
         const affiliation = Array.isArray(club.affiliation) ? club.affiliation.join(" · ") : (club.affiliation || "TUP Manila");
 
+        // Build categories display HTML - show all categories
+        const categoriesHTML = categories.map(cat => 
+          `<span class="modal-category-badge" style="margin-right: 0.5rem; margin-bottom: 0.5rem;">${escapeHtml(cat)}</span>`
+        ).join('');
+
         modalContent.innerHTML = `
           <div class="modal-main">
             <div class="modal-header-section">
@@ -246,7 +263,9 @@
               </div>
               <div class="modal-title-section">
                 <h2>${club.name}</h2>
-                <span class="modal-category-badge">${primaryCategory}</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                  ${categoriesHTML}
+                </div>
               </div>
             </div>
             

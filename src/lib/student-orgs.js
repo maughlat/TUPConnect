@@ -160,10 +160,18 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
     logoFallback = `${logoBase}.jpg`;
   }
 
-  // Get primary category
+  // Format categories - display all categories, not just the first one
+  let categoriesDisplay = '';
+  if (orgData.categories && Array.isArray(orgData.categories) && orgData.categories.length > 0) {
+    categoriesDisplay = orgData.categories.join(' • ');
+  } else {
+    categoriesDisplay = 'Academic/Research'; // Default fallback
+  }
+
+  // Get primary category for badge (first category)
   const primaryCategory = (orgData.categories && orgData.categories.length > 0) 
     ? orgData.categories[0] 
-    : 'Academic';
+    : 'Academic/Research';
 
   // Format affiliation (handle both string and array)
   const affiliation = Array.isArray(orgData.affiliation) 
@@ -189,8 +197,23 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
   html += '</div>';
   html += '</div>';
 
-  // Category badge
-  html += `<div class="club-category-badge">${escapeHtml(primaryCategory)}</div>`;
+  // Category badges - display all categories
+  if (orgData.categories && Array.isArray(orgData.categories) && orgData.categories.length > 0) {
+    // Display first category as main badge
+    html += `<div class="club-category-badge">${escapeHtml(orgData.categories[0])}</div>`;
+    // Display additional categories if there are more
+    if (orgData.categories.length > 1) {
+      html += `<div class="club-categories-list" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted, #666); display: flex; flex-wrap: wrap; gap: 0.4rem;">`;
+      orgData.categories.forEach((cat, index) => {
+        if (index > 0) { // Skip first one (already shown as badge)
+          html += `<span style="padding: 0.2rem 0.6rem; background: rgba(184, 20, 20, 0.08); border-radius: 999px; color: var(--accent, #b81414); font-weight: 500;">${escapeHtml(cat)}</span>`;
+        }
+      });
+      html += '</div>';
+    }
+  } else {
+    html += `<div class="club-category-badge">${escapeHtml(primaryCategory)}</div>`;
+  }
 
   // Description (About section only)
   const description = orgData.description || 'No description available.';

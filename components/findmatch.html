@@ -392,7 +392,11 @@
         // Handle both old club format and new org format from Supabase
         const club = org;
         const logo = buildLogoPath(club);
-        const primaryCategory = (club.categories && club.categories.length > 0) ? club.categories[0] : "Academic";
+        // Handle categories - display all categories
+        const categories = Array.isArray(club.categories) && club.categories.length > 0 
+          ? club.categories 
+          : ["Academic/Research"];
+        const primaryCategory = categories[0];
         const email = club.email || "contact@tup.edu.ph";
         const facultyAdvisor = club.facultyAdvisor || "To be announced";
         const memberCount = club.memberCount || "50+";
@@ -409,6 +413,17 @@
         // Handle affiliation - can be string or array
         const affiliation = Array.isArray(club.affiliation) ? club.affiliation.join(" · ") : (club.affiliation || "TUP Manila");
 
+        // Build categories display HTML
+        const escapeHtml = (text) => {
+          if (!text) return '';
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        };
+        const categoriesHTML = categories.map(cat => 
+          `<span class="modal-category-badge" style="margin-right: 0.5rem; margin-bottom: 0.5rem;">${escapeHtml(cat)}</span>`
+        ).join('');
+
         modalContent.innerHTML = `
           <div class="modal-main">
             <div class="modal-header-section">
@@ -421,8 +436,10 @@
               </div>
               <div class="modal-title-section">
                 <h2>${club.name}</h2>
-                <span class="modal-category-badge">${primaryCategory}</span>
-                ${club.matchPercentage ? `<span class="match-badge">${club.matchPercentage}% Match</span>` : ''}
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                  ${categoriesHTML}
+                  ${club.matchPercentage ? `<span class="match-badge">${club.matchPercentage}% Match</span>` : ''}
+                </div>
               </div>
             </div>
             
