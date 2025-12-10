@@ -734,6 +734,7 @@
 
       /**
        * Handle Organization Profile Update
+       * Single Source of Truth (SSOT): All profile data saved to public.organizations table
        * @param {string} orgId - Organization ID
        * @param {FormData} formData - Form data containing profile fields
        */
@@ -741,33 +742,41 @@
         try {
           const messageEl = document.getElementById('profileMessage');
           
-          // Get form values
+          // Get form values - All fields from the profile management form
           const aboutValue = document.getElementById('orgAbout').value.trim();
           const activitiesValue = document.getElementById('orgActivities').value.trim();
           const facebookLinkValue = document.getElementById('facebookLink').value.trim();
           const profilePictureFile = document.getElementById('orgProfilePicture').files[0];
 
-          // Convert activities text to array
+          // Convert activities text to array (handles bullet points, dashes, etc.)
           const activitiesArray = activitiesValue
             .split('\n')
             .map(line => line.replace(/^[•\-\*]\s*/, '').trim())
             .filter(line => line.length > 0);
 
-          // Prepare update data
+          // Prepare update data object for public.organizations table (SSOT)
+          // This consolidates ALL profile fields into a single database update
           let updateData = {
-            description: aboutValue,
+            // Description/About section - stores the main "About" content
+            description: aboutValue || null,
+            
+            // Activities array - stores list of activities/focus areas
             activities: activitiesArray.length > 0 ? activitiesArray : null,
+            
+            // Facebook link - stores official Facebook page URL
             facebook_link: facebookLinkValue || null
           };
 
-          // Upload profile picture if provided
+          // Upload profile picture if provided and save URL to logo column
           if (profilePictureFile) {
             showMessage('Uploading profile picture...', 'success', messageEl);
             const logoUrl = await uploadOrgProfilePicture(profilePictureFile, orgId);
+            // Save the Supabase Storage public URL to the logo column (SSOT)
             updateData.logo = logoUrl;
           }
 
-          // Update organization in database
+          // Single database update to public.organizations table (SSOT principle)
+          // This ensures all profile data is stored in one centralized location
           showMessage('Saving profile changes...', 'success', messageEl);
           const { data: updatedOrg, error: updateError } = await supabase
             .from('organizations')
@@ -780,7 +789,7 @@
             throw new Error(`Failed to update organization profile: ${updateError.message}`);
           }
 
-          // Update local data
+          // Update local cached data to reflect changes immediately
           if (currentOrganization) {
             currentOrganization.description = aboutValue;
             currentOrganization.activities = activitiesArray;
@@ -790,7 +799,7 @@
             }
           }
 
-          // Update preview if logo was changed
+          // Update preview image if logo was changed
           if (updateData.logo) {
             const previewImg = document.getElementById('previewImage');
             if (previewImg) {
@@ -801,7 +810,7 @@
           // Show success message
           showMessage('✓ Profile Updated Successfully! Your organization profile has been saved and will be visible to students.', 'success', messageEl);
 
-          // Update dashboard
+          // Refresh dashboard to reflect updated profile completion
           updateDashboard();
 
           // Hide message after 5 seconds
@@ -811,7 +820,7 @@
             }
           }, 5000);
 
-          console.log('Profile updated successfully:', updatedOrg);
+          console.log('Profile updated successfully (SSOT):', updatedOrg);
         } catch (error) {
           console.error('Error updating profile:', error);
           const messageEl = document.getElementById('profileMessage');
