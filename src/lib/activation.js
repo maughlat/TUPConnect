@@ -48,42 +48,14 @@ async function triggerAccountActivation(orgEmail, redirectUrl = null, supabaseCl
   }
 
   try {
-    // Get the current origin to build the redirect URL
-    const origin = window.location.origin;
-    
-    // Production URL - always use this when on production
+    // Production URL - ALWAYS use production URL for activation emails
+    // This ensures emails always point to the live site, even if triggered from localhost
     const PRODUCTION_URL = 'https://tupconnect.vercel.app';
     const PRODUCTION_REDIRECT = `${PRODUCTION_URL}/components/setup_password.html`;
     
-    // Determine if we're on production
-    const isProduction = origin.includes('vercel.app') || origin.includes('tupconnect');
-    
-    // Build redirect URL:
-    // - Use production URL if on production
-    // - Otherwise, construct from current location (for localhost testing)
-    let defaultRedirectUrl;
-    if (isProduction) {
-      defaultRedirectUrl = PRODUCTION_REDIRECT;
-    } else {
-      // For localhost/development: construct path intelligently
-      const pathname = window.location.pathname;
-      let basePath;
-      
-      // If we're at root or in a subdirectory, use root as base
-      if (pathname === '/' || pathname === '/index.html') {
-        basePath = '';
-      } else if (pathname.includes('/components/')) {
-        // If we're already in components, use root as base
-        basePath = '';
-      } else {
-        // Otherwise, use the directory containing the current file
-        basePath = pathname.substring(0, pathname.lastIndexOf('/'));
-      }
-      
-      defaultRedirectUrl = `${origin}${basePath}/components/setup_password.html`;
-    }
-    
-    const finalRedirectUrl = redirectUrl || defaultRedirectUrl;
+    // Always use production URL for activation emails
+    // The redirectUrl parameter can override this if needed for testing
+    const finalRedirectUrl = redirectUrl || PRODUCTION_REDIRECT;
 
     console.log('=== ACTIVATION EMAIL DEBUG ===');
     console.log('Sending activation email to:', orgEmail);
