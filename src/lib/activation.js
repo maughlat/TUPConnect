@@ -94,34 +94,48 @@ async function triggerAccountActivation(orgEmail, redirectUrl = null, supabaseCl
         // Generate a random temporary password (user will set their own via email)
         const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12) + 'A1!';
         
-        // Create the user account using signUp
-        // Note: We'll disable email confirmation to avoid sending two emails
+        // IMPORTANT: To prevent the "invitation" email from being sent, we need to:
+        // 1. Disable email confirmation in Supabase project settings (Authentication → Providers → Email → Disable "Enable email confirmations")
+        // 2. Use autoConfirm to skip email confirmation
+        // The signUp will still create the user, but won't send confirmation email if settings are correct
+        
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: orgEmail.trim(),
           password: tempPassword,
           options: {
-            emailRedirectTo: finalRedirectUrl,
-            // Disable email confirmation since we'll send password reset instead
+            // Don't set emailRedirectTo here - it triggers the invitation email
+            // We'll only send the password reset email below
             data: {
-              is_org_officer: true
+              is_org_officer: true,
+              auto_confirm: true  // Try to auto-confirm (depends on project settings)
             }
           }
         });
 
         if (signUpError) {
           console.error('Failed to create user account:', signUpError);
-          return {
-            success: false,
-            error: `Failed to create account: ${signUpError.message || 'User creation failed'}`
-          };
+          
+          // If error is about email confirmation, that's okay - user might already exist
+          // or we'll handle it differently
+          if (signUpError.message && signUpError.message.toLowerCase().includes('already registered')) {
+            console.log('User might already exist. Proceeding with password reset...');
+            // Continue to password reset flow below
+          } else {
+            return {
+              success: false,
+              error: `Failed to create account: ${signUpError.message || 'User creation failed'}. Note: Make sure email confirmation is disabled in Supabase settings to prevent invitation emails.`
+            };
+          }
+        } else {
+          console.log('User account created successfully.');
         }
 
-        console.log('User account created. Now sending password reset email...');
+        console.log('Sending password reset email (activation link)...');
         
-        // Wait a moment for the user to be fully created
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait a moment for the user to be fully created in Supabase
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Now try sending the password reset email again
+        // Send the password reset email (this is the activation email we want)
         const resetResult = await supabase.auth.resetPasswordForEmail(orgEmail.trim(), {
           redirectTo: finalRedirectUrl
         });
@@ -134,7 +148,7 @@ async function triggerAccountActivation(orgEmail, redirectUrl = null, supabaseCl
           };
         }
 
-        // Success: user created and email sent
+        // Success: user created and activation email sent
         console.log('triggerAccountActivation success: User created and activation email sent to', orgEmail);
         return {
           success: true,
