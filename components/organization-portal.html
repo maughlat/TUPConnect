@@ -142,17 +142,32 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="applicationLink">Application Link *</label>
+                  <label for="facebookLink">Facebook Page Link</label>
                   <input
                     type="url"
-                    id="applicationLink"
-                    name="applicationLink"
-                    placeholder="https://forms.google.com/your-application-form"
-                    required
+                    id="facebookLink"
+                    name="facebookLink"
+                    placeholder="https://facebook.com/your-organization"
                   />
                   <small style="color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; display: block;">
-                    External form URL (e.g., Google Forms) where students can apply to join your organization
+                    Your organization's official Facebook page URL
                   </small>
+                </div>
+
+                <div class="form-group">
+                  <label for="orgProfilePicture">Profile Picture</label>
+                  <input
+                    type="file"
+                    id="orgProfilePicture"
+                    name="orgProfilePicture"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                  />
+                  <small style="color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; display: block;">
+                    Upload your organization logo/profile picture (PNG, JPG, or WebP). Maximum file size: 2MB
+                  </small>
+                  <div id="profilePicturePreview" style="margin-top: 1rem; display: none;">
+                    <img id="previewImage" src="" alt="Preview" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid rgba(163, 39, 39, 0.2);" />
+                  </div>
                 </div>
 
                 <div class="form-actions" style="margin-top: 2rem;">
@@ -609,18 +624,18 @@
         const pendingCount = applications.filter(app => app.status === 'Pending').length;
         const totalMembers = applications.filter(app => app.status === 'Approved').length;
         
-        // Calculate profile completion based on organization and profile data
+        // Calculate profile completion based on organization data
         let completionScore = 0;
         const hasDescription = currentOrganization?.description && currentOrganization.description.trim().length > 50;
-        const hasActivities = organizationProfile?.objectives && (
-          (Array.isArray(organizationProfile.objectives) && organizationProfile.objectives.length > 0) ||
-          (typeof organizationProfile.activities === 'string' && organizationProfile.activities.trim().length > 50)
+        const hasActivities = currentOrganization?.activities && (
+          (Array.isArray(currentOrganization.activities) && currentOrganization.activities.length > 0) ||
+          (typeof currentOrganization.activities === 'string' && currentOrganization.activities.trim().length > 50)
         );
-        const hasApplicationInfo = organizationProfile?.membership_info && organizationProfile.membership_info.trim().length > 0;
+        const hasFacebookLink = currentOrganization?.facebook_link && currentOrganization.facebook_link.trim().length > 0;
 
         if (hasDescription) completionScore += 34;
         if (hasActivities) completionScore += 33;
-        if (hasApplicationInfo) completionScore += 33;
+        if (hasFacebookLink) completionScore += 33;
 
         document.getElementById('pendingCount').textContent = pendingCount;
         document.getElementById('totalMembers').textContent = totalMembers;
@@ -641,17 +656,345 @@
 
       // Profile Management functions
       function loadProfile() {
-        // Load data from current organization and profile
-        const aboutText = currentOrganization?.description || organizationProfile?.mission || '';
-        const activitiesText = organizationProfile?.activities || 
-                              (Array.isArray(organizationProfile?.objectives) 
-                                ? organizationProfile.objectives.join('\n• ') 
-                                : '') || '';
-        const applicationInfo = organizationProfile?.membership_info || '';
+        // Load data from current organization
+        const aboutText = currentOrganization?.description || '';
+        const activitiesText = currentOrganization?.activities 
+          ? (Array.isArray(currentOrganization.activities) 
+              ? currentOrganization.activities.map(a => '• ' + a).join('\n')
+              : currentOrganization.activities)
+          : '';
+        const facebookLink = currentOrganization?.facebook_link || '';
+        const logoUrl = currentOrganization?.logo || '';
 
         document.getElementById('orgAbout').value = aboutText;
         document.getElementById('orgActivities').value = activitiesText;
-        document.getElementById('applicationLink').value = applicationInfo;
+        document.getElementById('facebookLink').value = facebookLink;
+        
+        // Load profile picture preview if logo exists
+        if (logoUrl) {
+          const preview = document.getElementById('profilePicturePreview');
+          const previewImg = document.getElementById('previewImage');
+          if (preview && previewImg) {
+            previewImg.src = logoUrl;
+            preview.style.display = 'block';
+          }
+        }
+      }
+
+      /**
+       * Upload Organization Profile Picture to Supabase Storage
+       * @param {File} file - The image file to upload
+       * @param {string} orgId - Organization ID
+       * @returns {Promise<string>} Public URL of the uploaded image
+       */
+      async function uploadOrgProfilePicture(file, orgId) {
+        try {
+          // Validate file size (2MB limit)
+          const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+          if (file.size > maxSize) {
+            throw new Error('File size exceeds 2MB limit. Please upload a smaller image.');
+          }
+
+          // Validate file type
+          const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+          if (!allowedTypes.includes(file.type)) {
+            throw new Error('Invalid file type. Please upload PNG, JPG, or WebP image.');
+          }
+
+          // Generate unique filename: orgId_timestamp.ext
+          const timestamp = Date.now();
+          const fileExt = file.name.split('.').pop().toLowerCase();
+          const fileName = `${orgId}_${timestamp}.${fileExt}`;
+          const filePath = `${orgId}/${fileName}`;
+
+          // Upload file to Supabase Storage (logos bucket)
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('logos')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: true // Allow overwriting if same org uploads again
+            });
+
+          if (uploadError) {
+            throw new Error(`Upload failed: ${uploadError.message}`);
+          }
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('logos')
+            .getPublicUrl(filePath);
+
+          console.log('Profile picture uploaded successfully:', publicUrl);
+          return publicUrl;
+        } catch (error) {
+          console.error('Error uploading profile picture:', error);
+          throw error;
+        }
+      }
+
+      /**
+       * Handle Organization Profile Update
+       * @param {string} orgId - Organization ID
+       * @param {FormData} formData - Form data containing profile fields
+       */
+      async function handleUpdateOrgProfile(orgId, formData) {
+        try {
+          const messageEl = document.getElementById('profileMessage');
+          
+          // Get form values
+          const aboutValue = document.getElementById('orgAbout').value.trim();
+          const activitiesValue = document.getElementById('orgActivities').value.trim();
+          const facebookLinkValue = document.getElementById('facebookLink').value.trim();
+          const profilePictureFile = document.getElementById('orgProfilePicture').files[0];
+
+          // Convert activities text to array
+          const activitiesArray = activitiesValue
+            .split('\n')
+            .map(line => line.replace(/^[•\-\*]\s*/, '').trim())
+            .filter(line => line.length > 0);
+
+          // Prepare update data
+          let updateData = {
+            description: aboutValue,
+            activities: activitiesArray.length > 0 ? activitiesArray : null,
+            facebook_link: facebookLinkValue || null
+          };
+
+          // Upload profile picture if provided
+          if (profilePictureFile) {
+            showMessage('Uploading profile picture...', 'success', messageEl);
+            const logoUrl = await uploadOrgProfilePicture(profilePictureFile, orgId);
+            updateData.logo = logoUrl;
+          }
+
+          // Update organization in database
+          showMessage('Saving profile changes...', 'success', messageEl);
+          const { data: updatedOrg, error: updateError } = await supabase
+            .from('organizations')
+            .update(updateData)
+            .eq('id', orgId)
+            .select()
+            .single();
+
+          if (updateError) {
+            throw new Error(`Failed to update organization profile: ${updateError.message}`);
+          }
+
+          // Update local data
+          if (currentOrganization) {
+            currentOrganization.description = aboutValue;
+            currentOrganization.activities = activitiesArray;
+            currentOrganization.facebook_link = facebookLinkValue;
+            if (updateData.logo) {
+              currentOrganization.logo = updateData.logo;
+            }
+          }
+
+          // Update preview if logo was changed
+          if (updateData.logo) {
+            const previewImg = document.getElementById('previewImage');
+            if (previewImg) {
+              previewImg.src = updateData.logo;
+            }
+          }
+
+          // Show success message
+          showMessage('✓ Profile Updated Successfully! Your organization profile has been saved and will be visible to students.', 'success', messageEl);
+
+          // Update dashboard
+          updateDashboard();
+
+          // Hide message after 5 seconds
+          setTimeout(() => {
+            if (messageEl) {
+              messageEl.style.display = 'none';
+            }
+          }, 5000);
+
+          console.log('Profile updated successfully:', updatedOrg);
+        } catch (error) {
+          console.error('Error updating profile:', error);
+          const messageEl = document.getElementById('profileMessage');
+          showMessage(`✗ Error: ${error.message || 'Failed to update profile. Please try again.'}`, 'error', messageEl);
+        }
+      }
+
+      /**
+       * Helper function to show messages
+       */
+      function showMessage(message, type, messageEl) {
+        if (!messageEl) return;
+        const bgColor = type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+        const borderColor = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+        const textColor = type === 'success' ? '#16a34a' : '#dc2626';
+        
+        messageEl.innerHTML = `
+          <div style="padding: 1rem; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; color: ${textColor};">
+            <strong>${message}</strong>
+          </div>
+        `;
+        messageEl.style.display = 'block';
+      }
+
+      /**
+       * Upload Organization Profile Picture to Supabase Storage
+       * @param {File} file - The image file to upload
+       * @param {string} orgId - Organization ID
+       * @returns {Promise<string>} Public URL of the uploaded image
+       */
+      async function uploadOrgProfilePicture(file, orgId) {
+        try {
+          // Validate file size (2MB limit)
+          const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+          if (file.size > maxSize) {
+            throw new Error('File size exceeds 2MB limit. Please upload a smaller image.');
+          }
+
+          // Validate file type
+          const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+          if (!allowedTypes.includes(file.type)) {
+            throw new Error('Invalid file type. Please upload PNG, JPG, or WebP image.');
+          }
+
+          // Generate unique filename: orgId_timestamp.ext
+          const timestamp = Date.now();
+          const fileExt = file.name.split('.').pop().toLowerCase();
+          const fileName = `${orgId}_${timestamp}.${fileExt}`;
+          const filePath = `${orgId}/${fileName}`;
+
+          // Upload file to Supabase Storage (logos bucket)
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('logos')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: true // Allow overwriting if same org uploads again
+            });
+
+          if (uploadError) {
+            throw new Error(`Upload failed: ${uploadError.message}`);
+          }
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('logos')
+            .getPublicUrl(filePath);
+
+          console.log('Profile picture uploaded successfully:', publicUrl);
+          return publicUrl;
+        } catch (error) {
+          console.error('Error uploading profile picture:', error);
+          throw error;
+        }
+      }
+
+      /**
+       * Handle Organization Profile Update
+       * @param {string} orgId - Organization ID
+       * @param {FormData} formData - Form data containing profile fields
+       */
+      async function handleUpdateOrgProfile(orgId, formData) {
+        try {
+          const messageEl = document.getElementById('profileMessage');
+          
+          // Get form values
+          const aboutValue = document.getElementById('orgAbout').value.trim();
+          const activitiesValue = document.getElementById('orgActivities').value.trim();
+          const facebookLinkValue = document.getElementById('facebookLink').value.trim();
+          const profilePictureFile = document.getElementById('orgProfilePicture').files[0];
+
+          // Convert activities text to array
+          const activitiesArray = activitiesValue
+            .split('\n')
+            .map(line => line.replace(/^[•\-\*]\s*/, '').trim())
+            .filter(line => line.length > 0);
+
+          // Prepare update data
+          let updateData = {
+            description: aboutValue,
+            activities: activitiesArray.length > 0 ? activitiesArray : null,
+            facebook_link: facebookLinkValue || null
+          };
+
+          // Upload profile picture if provided
+          if (profilePictureFile) {
+            showMessage('Uploading profile picture...', 'success', messageEl);
+            const logoUrl = await uploadOrgProfilePicture(profilePictureFile, orgId);
+            updateData.logo = logoUrl;
+          }
+
+          // Update organization in database
+          showMessage('Saving profile changes...', 'success', messageEl);
+          const { data: updatedOrg, error: updateError } = await supabase
+            .from('organizations')
+            .update(updateData)
+            .eq('id', orgId)
+            .select()
+            .single();
+
+          if (updateError) {
+            throw new Error(`Failed to update organization profile: ${updateError.message}`);
+          }
+
+          // Update local data
+          if (currentOrganization) {
+            currentOrganization.description = aboutValue;
+            currentOrganization.activities = activitiesArray;
+            currentOrganization.facebook_link = facebookLinkValue;
+            if (updateData.logo) {
+              currentOrganization.logo = updateData.logo;
+            }
+          }
+
+          // Update preview if logo was changed
+          if (updateData.logo) {
+            const previewImg = document.getElementById('previewImage');
+            if (previewImg) {
+              previewImg.src = updateData.logo;
+            }
+          }
+
+          // Show success message
+          showMessage('✓ Profile Updated Successfully! Your organization profile has been saved and will be visible to students.', 'success', messageEl);
+
+          // Update dashboard
+          updateDashboard();
+
+          // Refresh organization data
+          const orgResult = await fetchOrgDataForOfficer();
+          if (orgResult.success) {
+            currentOrganization = orgResult.data;
+          }
+
+          // Hide message after 5 seconds
+          setTimeout(() => {
+            if (messageEl) {
+              messageEl.style.display = 'none';
+            }
+          }, 5000);
+
+          console.log('Profile updated successfully:', updatedOrg);
+        } catch (error) {
+          console.error('Error updating profile:', error);
+          const messageEl = document.getElementById('profileMessage');
+          showMessage(`✗ Error: ${error.message || 'Failed to update profile. Please try again.'}`, 'error', messageEl);
+        }
+      }
+
+      /**
+       * Helper function to show messages
+       */
+      function showMessage(message, type, messageEl) {
+        if (!messageEl) return;
+        const bgColor = type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+        const borderColor = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+        const textColor = type === 'success' ? '#16a34a' : '#dc2626';
+        
+        messageEl.innerHTML = `
+          <div style="padding: 1rem; background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; color: ${textColor};">
+            <strong>${message}</strong>
+          </div>
+        `;
+        messageEl.style.display = 'block';
       }
 
       /**
@@ -663,101 +1006,41 @@
 
         if (!profileForm) return;
 
+        // Handle profile picture upload preview
+        const profilePictureInput = document.getElementById('orgProfilePicture');
+        const previewContainer = document.getElementById('profilePicturePreview');
+        const previewImage = document.getElementById('previewImage');
+        
+        if (profilePictureInput && previewImage) {
+          profilePictureInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                if (previewContainer) {
+                  previewContainer.style.display = 'block';
+                }
+              };
+              reader.readAsDataURL(file);
+            } else {
+              if (previewContainer) {
+                previewContainer.style.display = 'none';
+              }
+            }
+          });
+        }
+
         // Save original values for reset
         let originalValues = {
           about: document.getElementById('orgAbout').value,
           activities: document.getElementById('orgActivities').value,
-          applicationLink: document.getElementById('applicationLink').value
+          facebookLink: document.getElementById('facebookLink').value
         };
 
         profileForm.addEventListener('submit', async function(e) {
           e.preventDefault();
-
-          const aboutValue = document.getElementById('orgAbout').value.trim();
-          const activitiesValue = document.getElementById('orgActivities').value.trim();
-          const applicationLinkValue = document.getElementById('applicationLink').value.trim();
-
-          try {
-            // Update organizations table (description field)
-            const { error: orgError } = await supabase
-              .from('organizations')
-              .update({ description: aboutValue })
-              .eq('id', organizationId);
-
-            if (orgError) {
-              throw new Error('Failed to update organization description: ' + orgError.message);
-            }
-
-            // Update or create org_profiles record
-            const activitiesArray = activitiesValue
-              .split('\n')
-              .map(line => line.replace(/^[•\-\*]\s*/, '').trim())
-              .filter(line => line.length > 0);
-
-            const { error: profileError } = await supabase
-              .from('org_profiles')
-              .upsert({
-                organization_id: organizationId,
-                mission: aboutValue,
-                objectives: activitiesArray,
-                membership_info: applicationLinkValue
-              }, {
-                onConflict: 'organization_id'
-              });
-
-            if (profileError) {
-              throw new Error('Failed to update organization profile: ' + profileError.message);
-            }
-
-            // Update local data
-            if (currentOrganization) {
-              currentOrganization.description = aboutValue;
-            }
-            organizationProfile = {
-              ...organizationProfile,
-              mission: aboutValue,
-              objectives: activitiesArray,
-              activities: activitiesValue,
-              membership_info: applicationLinkValue
-            };
-
-            // Show success message
-            const messageEl = document.getElementById('profileMessage');
-            messageEl.innerHTML = `
-              <div style="padding: 1rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; color: #16a34a;">
-                <strong>✓ Profile Updated Successfully!</strong><br>
-                Your organization profile has been saved and will be visible to students.
-              </div>
-            `;
-            messageEl.style.display = 'block';
-
-            // Update dashboard
-            updateDashboard();
-
-            // Update original values for reset
-            originalValues = {
-              about: aboutValue,
-              activities: activitiesValue,
-              applicationLink: applicationLinkValue
-            };
-
-            // Hide message after 5 seconds
-            setTimeout(() => {
-              messageEl.style.display = 'none';
-            }, 5000);
-
-            console.log('Profile updated successfully');
-          } catch (error) {
-            console.error('Error updating profile:', error);
-            const messageEl = document.getElementById('profileMessage');
-            messageEl.innerHTML = `
-              <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #dc2626;">
-                <strong>✗ Error</strong><br>
-                ${error.message || 'Failed to update profile. Please try again.'}
-              </div>
-            `;
-            messageEl.style.display = 'block';
-          }
+          await handleUpdateOrgProfile(organizationId, new FormData(profileForm));
         });
 
         if (resetBtn) {
@@ -765,7 +1048,13 @@
             if (confirm('Are you sure you want to reset all changes? This will restore the last saved values.')) {
               document.getElementById('orgAbout').value = originalValues.about;
               document.getElementById('orgActivities').value = originalValues.activities;
-              document.getElementById('applicationLink').value = originalValues.applicationLink;
+              document.getElementById('facebookLink').value = originalValues.facebookLink;
+              if (profilePictureInput) {
+                profilePictureInput.value = '';
+              }
+              if (previewContainer) {
+                previewContainer.style.display = 'none';
+              }
             }
           });
         }

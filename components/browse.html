@@ -213,7 +213,15 @@
         const facultyAdvisor = club.facultyAdvisor || "To be announced";
         const memberCount = club.memberCount || "50+";
         const focus = club.focus || ["Student Development", "Community Engagement"];
-        const activities = club.activities || ["Regular Meetings", "Campus Events"];
+        // Handle activities - can be array or need to parse from description
+        let activities = [];
+        if (Array.isArray(club.activities) && club.activities.length > 0) {
+          activities = club.activities;
+        } else if (club.activities && typeof club.activities === 'string') {
+          activities = club.activities.split('\n').filter(a => a.trim().length > 0);
+        } else {
+          activities = ["Regular Meetings", "Campus Events"];
+        }
         // Handle affiliation - can be string or array
         const affiliation = Array.isArray(club.affiliation) ? club.affiliation.join(" · ") : (club.affiliation || "TUP Manila");
 
@@ -264,14 +272,16 @@
 
           <div class="modal-contact">
             <h3>Get In Touch</h3>
+            ${club.facebook_link ? `
             <div class="contact-item">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
               </svg>
-              <a href="${club.url}" target="_blank" rel="noopener noreferrer" class="contact-link">
+              <a href="${club.facebook_link}" target="_blank" rel="noopener noreferrer" class="contact-link">
                 Visit Facebook Page
               </a>
             </div>
+            ` : ''}
             <div class="contact-item">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>

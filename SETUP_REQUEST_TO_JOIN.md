@@ -567,6 +567,52 @@ EXECUTE FUNCTION send_application_email();
 
 ## Troubleshooting
 
+  ### Issue: "new row violates row-level security policy" error when submitting form
+
+**This is the most common error!** It means the INSERT policy isn't working correctly.
+
+**Solutions (try in order)**:
+
+1. **Verify the policy exists and is correct**:
+   - Go to **Authentication** → **Policies** → Search "applications"
+   - Find the policy named "Allow anonymous application submissions"
+   - Check it has:
+     - ✅ Command: `INSERT`
+     - ✅ Target roles: `anon` (NOT `authenticated` or `public`)
+     - ✅ USING expression: `true`
+     - ✅ WITH CHECK expression: `true` (required for INSERT!)
+
+2. **Check the WITH CHECK expression**:
+   - INSERT policies **REQUIRE** a WITH CHECK clause
+   - Open the policy and verify both USING and WITH CHECK have `true`
+   - If WITH CHECK is missing or has an error, fix it:
+     ```sql
+     WITH CHECK (true)
+     ```
+
+3. **Verify RLS is enabled**:
+   - In Authentication > Policies > applications table
+   - Make sure RLS is enabled (should see "Disable RLS" button, not "Enable RLS")
+
+4. **Recreate the policy if needed**:
+   - Delete the existing "Allow anonymous application submissions" policy
+   - Create it again following Step 4.2 exactly
+   - **Important**: Make sure BOTH USING and WITH CHECK are set to `true`
+
+5. **Check if policy is in wrong location**:
+   - Policy MUST be in **Authentication > Policies** (NOT Storage)
+   - If you see it in Storage > Buckets > applications > Policies, delete it from there
+   - Create it in the correct location: **Authentication > Policies**
+
+6. **Test with SQL Editor** (advanced):
+   - Go to SQL Editor and try:
+     ```sql
+     SET role anon;
+     INSERT INTO applications (organization_id, student_name, personal_email, tup_student_number, year_section, college_affiliated, cv_link, notes, status)
+     VALUES ('your-org-id', 'Test Student', 'test@example.com', 'TUPM-21-1234', 'BSIT 3-1', 'COS', 'https://example.com/cv.pdf', 'Test reason', 'Pending');
+     ```
+   - If this fails, the policy is definitely wrong
+
 ### Issue: File upload fails
 
 **Solution**: 

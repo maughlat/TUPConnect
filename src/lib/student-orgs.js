@@ -187,6 +187,17 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
   const description = orgData.description || 'No description available.';
   html += `<p class="club-description">${escapeHtml(description)}</p>`;
 
+  // Activities/Focus (if available)
+  if (orgData.activities && Array.isArray(orgData.activities) && orgData.activities.length > 0) {
+    html += '<div class="club-activities" style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--muted, #666);">';
+    html += '<strong>Activities: </strong>';
+    html += orgData.activities.slice(0, 3).map(a => escapeHtml(a)).join(' • ');
+    if (orgData.activities.length > 3) {
+      html += ` <span style="color: var(--muted, #999);">+${orgData.activities.length - 3} more</span>`;
+    }
+    html += '</div>';
+  }
+
   html += '</article>';
 
   return html;
