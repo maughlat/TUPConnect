@@ -254,26 +254,12 @@
             </div>
 
             <div class="modal-focus">
-              <h3>Focus & Activities</h3>
-              <div class="focus-list">
-                <div class="focus-item">
-                  <strong>Core Focus:</strong>
-                  <ul>
-                    ${focus.map(f => `<li>${f}</li>`).join("")}
-                  </ul>
-                </div>
-                <div class="activities-item">
-                  <strong>Recent Activities:</strong>
-                  <ul>
-                    ${activities.map(a => `<li>${a}</li>`).join("")}
-                  </ul>
-                </div>
+              <h3>Activities</h3>
+              <div class="activities-list">
+                <ul>
+                  ${activities.map(a => `<li>${a}</li>`).join("")}
+                </ul>
               </div>
-            </div>
-
-            <div class="modal-members">
-              <h3>Organization Size</h3>
-              <p class="member-count">${memberCount} Active Members</p>
             </div>
           </div>
 
@@ -295,16 +281,6 @@
                 <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
               <a href="mailto:${email}" class="contact-link">${email}</a>
-            </div>
-            <div class="contact-item">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-              <div class="contact-info">
-                <strong>Faculty Advisor:</strong>
-                <p>${facultyAdvisor}</p>
-              </div>
             </div>
             ${club.is_active ? `
             <div class="modal-request-section">
