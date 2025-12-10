@@ -305,30 +305,117 @@
         return text.toLowerCase().split(/\s+/);
       }
 
-      // Matching algorithm with keyword matching
-      function findMatches() {
-        if (selectedInterests.length === 0) return [];
+      // AI-Driven Smart Matching Algorithm
+      async function calculateSmartMatch(combinedInterests) {
+        if (!combinedInterests || combinedInterests.trim().length === 0) {
+          return [];
+        }
 
-        // Combine all user inputs into one string
-        const combinedInput = selectedInterests.join(" ").toLowerCase();
+        try {
+          // Step 1: Call Gemini API to get matched categories
+          const geminiResponse = await fetch('https://tupconnect.vercel.app/api/gemini-match', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              student_interest: combinedInterests
+            })
+          });
+
+          if (!geminiResponse.ok) {
+            throw new Error(`API error: ${geminiResponse.status} ${geminiResponse.statusText}`);
+          }
+
+          const geminiData = await geminiResponse.json();
+          
+          if (!geminiData.matched_categories || !Array.isArray(geminiData.matched_categories)) {
+            throw new Error('Invalid response format from AI API');
+          }
+
+          const aiMatchedCategories = geminiData.matched_categories;
+          
+          // If no categories matched, return empty array
+          if (aiMatchedCategories.length === 0) {
+            return [];
+          }
+
+          // Step 2: Fetch all organizations from Supabase
+          const { data: organizations, error: orgError } = await supabase
+            .from('organizations')
+            .select('id, name, categories, description, logo, affiliation, email, facebook_link, url, is_active, activities');
+
+          if (orgError) {
+            console.error('Error fetching organizations:', orgError);
+            throw new Error('Failed to fetch organizations');
+          }
+
+          if (!organizations || organizations.length === 0) {
+            return [];
+          }
+
+          // Step 3: Calculate match percentage for each organization
+          const matches = [];
+
+          organizations.forEach((org) => {
+            if (!org.categories || !Array.isArray(org.categories) || org.categories.length === 0) {
+              return; // Skip organizations without categories
+            }
+
+            // Find overlapping categories between AI result and organization categories
+            const overlappingCategories = org.categories.filter(orgCategory => 
+              aiMatchedCategories.includes(orgCategory)
+            );
+
+            // Calculate match percentage: (overlapping / total AI categories) * 100
+            const matchPercentage = Math.round(
+              (overlappingCategories.length / aiMatchedCategories.length) * 100
+            );
+
+            // Only include organizations with at least 1 match
+            if (matchPercentage > 0) {
+              matches.push({
+                ...org,
+                matchPercentage: Math.min(matchPercentage, 100) // Cap at 100%
+              });
+            }
+          });
+
+          // Step 4: Sort by match percentage (highest first)
+          matches.sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+          return matches;
+
+        } catch (error) {
+          console.error('Error in calculateSmartMatch:', error);
+          
+          // Fallback to keyword matching if AI fails
+          console.warn('Falling back to keyword matching due to AI error');
+          return findMatchesFallback(combinedInterests);
+        }
+      }
+
+      // Fallback keyword matching function (kept as backup)
+      function findMatchesFallback(combinedInput) {
+        if (!combinedInput || combinedInput.trim().length === 0) return [];
+
+        const inputLower = combinedInput.toLowerCase();
         const userKeywords = extractKeywords(combinedInput);
-        
         const matches = [];
 
         allOrganizations.forEach((org) => {
           let matchCount = 0;
-          const matchedKeywords = [];
 
           // Check organization name
-          if (combinedInput.includes(org.name.toLowerCase()) || 
-              org.name.toLowerCase().includes(combinedInput)) {
+          if (inputLower.includes(org.name.toLowerCase()) || 
+              org.name.toLowerCase().includes(inputLower)) {
             matchCount += 2;
           }
 
           // Check description
           if (org.description && (
-              combinedInput.includes(org.description.toLowerCase()) ||
-              org.description.toLowerCase().includes(combinedInput)
+              inputLower.includes(org.description.toLowerCase()) ||
+              org.description.toLowerCase().includes(inputLower)
             )) {
             matchCount += 2;
           }
@@ -336,38 +423,41 @@
           // Check categories
           if (org.categories && Array.isArray(org.categories)) {
             org.categories.forEach((category) => {
-              if (combinedInput.includes(category.toLowerCase())) {
+              if (inputLower.includes(category.toLowerCase())) {
                 matchCount++;
-                if (!matchedKeywords.includes(category)) {
-                  matchedKeywords.push(category);
-                }
               }
             });
           }
 
           // Check affiliation
-          if (org.affiliation && combinedInput.includes(org.affiliation.toLowerCase())) {
+          if (org.affiliation && inputLower.includes(org.affiliation.toLowerCase())) {
             matchCount++;
           }
 
           if (matchCount > 0) {
             const matchPercentage = Math.min(
-              Math.round((matchCount / Math.max(selectedInterests.length, 2)) * 100),
+              Math.round((matchCount / Math.max(userKeywords.length, 2)) * 100),
               99
             );
 
             matches.push({
               ...org,
-              matchPercentage,
-              matchedKeywords,
+              matchPercentage
             });
           }
         });
 
-        // Sort by percentage (highest first)
         matches.sort((a, b) => b.matchPercentage - a.matchPercentage);
-
         return matches;
+      }
+
+      // Legacy function kept for compatibility (now calls smart match)
+      function findMatches() {
+        if (selectedInterests.length === 0) return [];
+
+        // Combine all user inputs into one string
+        const combinedInput = selectedInterests.join(" ");
+        return findMatchesFallback(combinedInput);
       }
 
       // Modal functions
@@ -565,10 +655,40 @@
         resultsSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
-      // Find matches button handler
-      findMatchesBtn.addEventListener("click", () => {
-        const matches = findMatches();
-        renderResults(matches);
+      // Find matches button handler (with loading state)
+      findMatchesBtn.addEventListener("click", async () => {
+        if (selectedInterests.length === 0) {
+          addBotMessage("Please share some interests first!");
+          return;
+        }
+
+        // Combine all user inputs
+        const combinedInterests = selectedInterests.join(" ");
+
+        // Show loading state
+        const originalButtonText = findMatchesBtn.textContent;
+        findMatchesBtn.textContent = "Finding Matches...";
+        findMatchesBtn.disabled = true;
+
+        try {
+          // Use AI-powered matching
+          const matches = await calculateSmartMatch(combinedInterests);
+          
+          if (matches.length === 0) {
+            addBotMessage("No matches found. Try sharing more about your interests!");
+          } else {
+            addBotMessage(`Found ${matches.length} matching organization${matches.length !== 1 ? 's' : ''}!`);
+          }
+
+          renderResults(matches);
+        } catch (error) {
+          console.error("Error finding matches:", error);
+          addBotMessage("Sorry, I encountered an error. Please try again.");
+        } finally {
+          // Restore button state
+          findMatchesBtn.textContent = originalButtonText;
+          findMatchesBtn.disabled = false;
+        }
       });
 
       // Initialize chat on load
