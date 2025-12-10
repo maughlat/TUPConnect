@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect • Browse Clubs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles/browse.css" />
+    <link rel="stylesheet" href="../styles/navbar.css" />
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Student Organizations Module -->
+    <script src="../src/lib/student-orgs.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="site-header-custom">
+        <div class="navbar-content-custom">
+          <div class="navbar-spacer"></div>
+          <a href="../index.html" class="navbar-logo-custom">TUPConnect</a>
+          <nav class="nav-links-custom">
+            <a href="browse.html" class="nav-link-custom active" data-page="browse">Browse Clubs</a>
+            <a href="findmatch.html" class="nav-link-custom" data-page="findmatch">Find Your Match</a>
+            <a href="../index.html#about" class="nav-link-custom" data-page="about">About</a>
+          </nav>
+          <div class="navbar-spacer"></div>
+          <div class="admin-access-wrapper">
+            <button class="admin-icon-btn" id="adminIconBtn" aria-label="Admin access" title="Admin Login">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </button>
+            <div class="admin-dropdown" id="adminDropdown">
+              <p class="admin-dropdown-text">You're an Admin or Organization?</p>
+              <a href="login.html" class="admin-dropdown-link">Log In here.</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <h1>Browse Accredited Clubs</h1>
+        <p>
+          Explore student organizations across every college. Each card links to
+          the official Facebook page so you can follow updates, events, and get
+          in touch with officers quickly.
+        </p>
+      </section>
+
+      <div class="filters">
+        <input
+          type="search"
+          id="searchInput"
+          placeholder="Search clubs by name, acronym, or college..."
+          aria-label="Search clubs"
+        />
+        <button type="button" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="filter-groups">
+        <div class="filter-group">
+          <span class="filter-label">Affiliation</span>
+          <div class="filter-chips" id="affiliationFilters">
+            <button type="button" data-aff="CAFA" class="chip">CAFA</button>
+            <button type="button" data-aff="CIT" class="chip">CIT</button>
+            <button type="button" data-aff="CIE" class="chip">CIE</button>
+            <button type="button" data-aff="CLA" class="chip">CLA</button>
+            <button type="button" data-aff="COS" class="chip">COS</button>
+            <button type="button" data-aff="COE" class="chip">COE</button>
+            <button type="button" data-aff="NON_COLLEGE" class="chip">
+              Non-College Based
+            </button>
+            <button type="button" data-aff="RELIGIOUS" class="chip">
+              Religious Orgs
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Category</span>
+          <div class="filter-chips" id="categoryFilters">
+            <button type="button" data-cat="Academic" class="chip">Academic</button>
+            <button type="button" data-cat="Technology" class="chip">
+              Technology
+            </button>
+            <button type="button" data-cat="Arts" class="chip">Arts</button>
+            <button type="button" data-cat="Service" class="chip">Service</button>
+            <button type="button" data-cat="Community" class="chip">
+              Community
+            </button>
+            <button type="button" data-cat="Gaming" class="chip">Gaming</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="clubSections" class="club-sections"></div>
+    </div>
+
+    <!-- Organization Detail Modal -->
+    <div id="orgModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-container">
+        <button class="modal-close" id="modalClose" aria-label="Close modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-content" id="modalContent">
+          <!-- Content will be dynamically inserted here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Set active nav link
+      (function() {
+        const navLinks = document.querySelectorAll('.nav-link-custom');
+        navLinks.forEach(link => {
+          if (link.getAttribute('href').includes('browse')) {
+            link.classList.add('active');
+          }
+        });
+      })();
+
+      // Admin dropdown toggle (click handler as fallback)
+      (function() {
+        const adminBtn = document.getElementById('adminIconBtn');
+        const adminDropdown = document.getElementById('adminDropdown');
+        const adminWrapper = document.querySelector('.admin-access-wrapper');
+        
+        if (adminBtn && adminDropdown) {
+          // Toggle on click
+          adminBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            adminDropdown.classList.toggle('show');
+          });
+
+          // Close when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!adminWrapper.contains(e.target)) {
+              adminDropdown.classList.remove('show');
+            }
+          });
+
+          // Prevent dropdown from closing when clicking inside it
+          adminDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
+        }
+      })();
+    </script>
+
+    <script>
+      // Initialize Supabase client
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Store organizations data for filtering
+      let allOrganizations = [];
+      const container = document.getElementById("clubSections");
+
+      // Load organizations from Supabase on page load
+      document.addEventListener('DOMContentLoaded', async () => {
+        const result = await fetchAndRenderOrgs('clubSections', false);
+        
+        if (result.success) {
+          console.log(`Loaded ${result.count} organizations`);
+          // Fetch organizations for filtering
+          const { data } = await supabase.from('organizations').select('*');
+          if (data) {
+            allOrganizations = data;
+          }
+        } else {
+          console.error('Failed to load organizations:', result.error);
+        }
+      });
+
+      // Listen for card click events to open modal
+      document.addEventListener('orgCardClick', (event) => {
+        const org = event.detail.organization;
+        openModal(org);
+      });
+
+      // Organizations are now loaded from Supabase via fetchAndRenderOrgs()
+      // Hardcoded data has been removed
+
+      // Helper functions for modal and rendering
+      const buildLogoPath = (club) => {
+        const base = `../assets/${club.logo || 'default'}`;
+        return { primary: `${base}.png`, fallback: `${base}.jpg` };
+      };
+
+      // Modal functions
+      const modal = document.getElementById("orgModal");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const modalClose = document.getElementById("modalClose");
+      const modalContent = document.getElementById("modalContent");
+
+      function openModal(org) {
+        // Handle both old club format and new org format from Supabase
+        const club = org;
+        const logo = buildLogoPath(club);
+        const primaryCategory = (club.categories && club.categories.length > 0) ? club.categories[0] : "Academic";
+        const email = club.email || "contact@tup.edu.ph";
+        const facultyAdvisor = club.facultyAdvisor || "To be announced";
+        const memberCount = club.memberCount || "50+";
+        const focus = club.focus || ["Student Development", "Community Engagement"];
+        const activities = club.activities || ["Regular Meetings", "Campus Events"];
+        // Handle affiliation - can be string or array
+        const affiliation = Array.isArray(club.affiliation) ? club.affiliation.join(" · ") : (club.affiliation || "TUP Manila");
+
+        modalContent.innerHTML = `
+          <div class="modal-main">
+            <div class="modal-header-section">
+              <div class="modal-logo">
+                <img
+                  src="${logo.primary}"
+                  alt="${club.name} logo"
+                  onerror="this.onerror=null;this.src='${logo.fallback}';"
+                />
+              </div>
+              <div class="modal-title-section">
+                <h2>${club.name}</h2>
+                <span class="modal-category-badge">${primaryCategory}</span>
+              </div>
+            </div>
+            
+            <div class="modal-about">
+              <h3>About</h3>
+              <p>${club.description}</p>
+            </div>
+
+            <div class="modal-focus">
+              <h3>Focus & Activities</h3>
+              <div class="focus-list">
+                <div class="focus-item">
+                  <strong>Core Focus:</strong>
+                  <ul>
+                    ${focus.map(f => `<li>${f}</li>`).join("")}
+                  </ul>
+                </div>
+                <div class="activities-item">
+                  <strong>Recent Activities:</strong>
+                  <ul>
+                    ${activities.map(a => `<li>${a}</li>`).join("")}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-members">
+              <h3>Organization Size</h3>
+              <p class="member-count">${memberCount} Active Members</p>
+            </div>
+          </div>
+
+          <div class="modal-contact">
+            <h3>Get In Touch</h3>
+            <div class="contact-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+              </svg>
+              <a href="${club.url}" target="_blank" rel="noopener noreferrer" class="contact-link">
+                Visit Facebook Page
+              </a>
+            </div>
+            <div class="contact-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <a href="mailto:${email}" class="contact-link">${email}</a>
+            </div>
+            <div class="contact-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <div class="contact-info">
+                <strong>Faculty Advisor:</strong>
+                <p>${facultyAdvisor}</p>
+              </div>
+            </div>
+            ${club.is_active ? `
+            <div class="modal-request-section">
+              <button class="btn-request-join" id="requestJoinBtn">
+                Request to Join
+              </button>
+            </div>
+            ` : `
+            <div class="modal-request-section">
+              <p class="request-inactive-message">This organization is currently not accepting new members.</p>
+            </div>
+            `}
+          </div>
+        `;
+        
+        // Add event listener for Request to Join button if it exists
+        const requestBtn = document.getElementById("requestJoinBtn");
+        if (requestBtn) {
+          requestBtn.addEventListener("click", () => {
+            // TODO: Implement request to join form/modal
+            alert(`Request to join ${club.name} has been submitted!`);
+          });
+        }
+        
+        modal.setAttribute("aria-hidden", "false");
+        modal.classList.add("modal-open");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeModal() {
+        modal.setAttribute("aria-hidden", "true");
+        modal.classList.remove("modal-open");
+        document.body.style.overflow = "";
+      }
+
+      modalBackdrop.addEventListener("click", closeModal);
+      modalClose.addEventListener("click", closeModal);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("modal-open")) {
+          closeModal();
+        }
+      });
+      
+      // Filter and render organizations from Supabase
+      const renderCategories = async (filteredText = "", affFilters = [], catFilters = []) => {
+        if (allOrganizations.length === 0) {
+          const { data } = await supabase.from('organizations').select('*');
+          if (data) allOrganizations = data;
+        }
+
+        const filtered = allOrganizations.filter((org) => {
+          const textMatch = !filteredText ||
+            org.name.toLowerCase().includes(filteredText) ||
+            (org.description && org.description.toLowerCase().includes(filteredText));
+          if (!textMatch) return false;
+          const hasAff = !affFilters.length || affFilters.includes(org.affiliation);
+          const hasCat = !catFilters.length || catFilters.some((c) => (org.categories || []).includes(c));
+          return hasAff && hasCat;
+        });
+
+        const grouped = {};
+        filtered.forEach(org => {
+          const aff = org.affiliation || 'NON_COLLEGE';
+          if (!grouped[aff]) grouped[aff] = [];
+          grouped[aff].push(org);
+        });
+
+        container.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+
+        Object.keys(grouped).forEach(affiliation => {
+          const orgs = grouped[affiliation];
+          const title = getAffiliationTitle(affiliation);
+          const section = document.createElement("section");
+          section.className = "category";
+          section.id = affiliation.toLowerCase().replace('_', '-');
+          const heading = document.createElement("h2");
+          heading.textContent = title;
+          section.appendChild(heading);
+          const cardsWrapper = document.createElement("div");
+          cardsWrapper.className = "cards";
+          orgs.forEach((org) => {
+            const cardHtml = renderOrgCardHTML(org, null);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = cardHtml;
+            const card = tempDiv.firstElementChild;
+            if (card) {
+              card.addEventListener('click', () => {
+                const event = new CustomEvent('orgCardClick', { detail: { organization: org } });
+                document.dispatchEvent(event);
+              });
+              cardsWrapper.appendChild(card);
+            }
+          });
+          section.appendChild(cardsWrapper);
+          fragment.appendChild(section);
+        });
+        container.appendChild(fragment);
+      };
+
+      function getAffiliationTitle(affiliation) {
+        const titles = {
+          'CAFA': 'College of Architecture and Fine Arts',
+          'CIE': 'College of Industrial Education',
+          'CIT': 'College of Industrial Technology',
+          'CLA': 'College of Liberal Arts',
+          'COE': 'College of Engineering',
+          'COS': 'College of Science',
+          'NON_COLLEGE': 'Non-College Based',
+          'RELIGIOUS': 'Religious Organizations'
+        };
+        return titles[affiliation] || affiliation;
+      }
+
+      const searchInput = document.getElementById("searchInput");
+      const resetBtn = document.getElementById("resetBtn");
+      const affiliationFilters = document.getElementById("affiliationFilters");
+      const categoryFilters = document.getElementById("categoryFilters");
+
+      const selectedAffiliations = new Set();
+      const selectedCategories = new Set();
+
+      const collectAffiliations = () => Array.from(selectedAffiliations);
+      const collectCategories = () => Array.from(selectedCategories);
+
+      const rerender = () => {
+        const text = searchInput.value.trim().toLowerCase();
+        renderCategories(text, collectAffiliations(), collectCategories());
+      };
+
+      const toggleChip = (set, button, value) => {
+        if (set.has(value)) {
+          set.delete(value);
+          button.classList.remove("chip-active");
+        } else {
+          set.add(value);
+          button.classList.add("chip-active");
+        }
+        rerender();
+      };
+
+      affiliationFilters.addEventListener("click", (e) => {
+        if (e.target.matches("button[data-aff]")) {
+          const value = e.target.getAttribute("data-aff");
+          toggleChip(selectedAffiliations, e.target, value);
+        }
+      });
+
+      categoryFilters.addEventListener("click", (e) => {
+        if (e.target.matches("button[data-cat]")) {
+          const value = e.target.getAttribute("data-cat");
+          toggleChip(selectedCategories, e.target, value);
+        }
+      });
+
+      searchInput.addEventListener("input", () => {
+        rerender();
+      });
+
+      resetBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        selectedAffiliations.clear();
+        selectedCategories.clear();
+        document
+          .querySelectorAll(".chip.chip-active")
+          .forEach((chip) => chip.classList.remove("chip-active"));
+        rerender();
+      });
+
+      // Initial render is handled by fetchAndRenderOrgs in DOMContentLoaded
+      // renderCategories() is called when filters change
+    </script>
+  </body>
+</html>
+
+

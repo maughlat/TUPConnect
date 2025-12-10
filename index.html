@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles/navbar.css" />
+  </head>
+  <body>
+    <div class="background-glow" aria-hidden="true"></div>
+    <header class="site-header-custom">
+      <div class="navbar-content-custom">
+        <div class="navbar-spacer"></div>
+        <a href="index.html" class="navbar-logo-custom">TUPConnect</a>
+        <nav class="nav-links-custom">
+          <a href="components/browse.html" class="nav-link-custom" data-page="browse">Browse Clubs</a>
+          <a href="components/findmatch.html" class="nav-link-custom" data-page="findmatch">Find Your Match</a>
+          <a href="#about" class="nav-link-custom" data-page="about">About</a>
+        </nav>
+        <div class="navbar-spacer"></div>
+        <div class="admin-access-wrapper">
+          <button class="admin-icon-btn" id="adminIconBtn" aria-label="Admin access" title="Admin Login">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="admin-dropdown" id="adminDropdown">
+            <p class="admin-dropdown-text">You're an Admin or Organization?</p>
+            <a href="components/login.html" class="admin-dropdown-link">Log In here.</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <script>
+      // Set active nav link based on current page
+      (function() {
+        const currentPath = window.location.pathname;
+        const hash = window.location.hash;
+        const navLinks = document.querySelectorAll('.nav-link-custom');
+        
+        navLinks.forEach(link => {
+          const href = link.getAttribute('href');
+          if (hash === '#about' && href === '#about') {
+            link.classList.add('active');
+          }
+        });
+      })();
+
+      // Admin dropdown toggle (click handler as fallback)
+      (function() {
+        const adminBtn = document.getElementById('adminIconBtn');
+        const adminDropdown = document.getElementById('adminDropdown');
+        const adminWrapper = document.querySelector('.admin-access-wrapper');
+        
+        if (adminBtn && adminDropdown) {
+          // Toggle on click
+          adminBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            adminDropdown.classList.toggle('show');
+          });
+
+          // Close when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!adminWrapper.contains(e.target)) {
+              adminDropdown.classList.remove('show');
+            }
+          });
+
+          // Prevent dropdown from closing when clicking inside it
+          adminDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
+        }
+      })();
+    </script>
+
+    <main>
+      <section class="hero surface">
+        <div class="hero-content">
+          <div class="hero-text">
+            <p class="eyebrow">Student Life Matching</p>
+            <h1>Find Your Campus Community.</h1>
+            <p>
+              TUPConnect guides students toward organizations that match their
+              passions, academic track, and future goals—so involvement feels
+              intentional and growth-focused.
+            </p>
+            <div class="hero-actions">
+              <a class="btn primary" href="components/findmatch.html">Find Your Match</a>
+              <a class="btn ghost" href="components/browse.html">Browse Accredited Clubs</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="matching" class="section matching surface">
+        <div class="container">
+          <h2>How Matching Works</h2>
+          <div class="matching-grid">
+            <article>
+              <span class="step-number">1</span>
+              <h3>Share Your Interests</h3>
+              <p>
+                Tell us what you're passionate about—from tech to arts, sports to
+                social causes.
+              </p>
+            </article>
+            <article>
+              <span class="step-number">2</span>
+              <h3>Get Matched</h3>
+              <p>
+                Our algorithm finds clubs that align with your interests and
+                goals.
+              </p>
+            </article>
+            <article>
+              <span class="step-number">3</span>
+              <h3>Connect & Grow</h3>
+              <p>
+                Join your matches and start building connections that last.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="section surface">
+        <div class="container">
+          <h2>About</h2>
+          <p>
+            Our objective is to increase student involvement in extracurriculars,
+            help every learner find their community, promote personal growth, and
+            improve overall well-being. Instead of waiting for student fairs,
+            TUPConnect gives students year-round access to curated organizations.
+          </p>
+        </div>
+      </section>
+      
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>© 2025 TUPConnect. Built with a simple HTML + CSS starter.</p>
+      </div>
+    </footer>
+  </body>
+</html>
+

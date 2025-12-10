@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect • Find Your Match</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/findmatch.css" />
+    <link rel="stylesheet" href="../styles/navbar.css" />
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Student Organizations Module -->
+    <script src="../src/lib/student-orgs.js"></script>
+  </head>
+  <body>
+    <div class="background-glow" aria-hidden="true"></div>
+    <header class="site-header-custom">
+      <div class="navbar-content-custom">
+        <div class="navbar-spacer"></div>
+        <a href="../index.html" class="navbar-logo-custom">TUPConnect</a>
+        <nav class="nav-links-custom">
+          <a href="browse.html" class="nav-link-custom" data-page="browse">Browse Clubs</a>
+          <a href="findmatch.html" class="nav-link-custom active" data-page="findmatch">Find Your Match</a>
+          <a href="../index.html#about" class="nav-link-custom" data-page="about">About</a>
+        </nav>
+        <div class="navbar-spacer"></div>
+        <div class="admin-access-wrapper">
+          <button class="admin-icon-btn" id="adminIconBtn" aria-label="Admin access" title="Admin Login">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="admin-dropdown" id="adminDropdown">
+            <p class="admin-dropdown-text">You're an Admin or Organization?</p>
+            <a href="login.html" class="admin-dropdown-link">Log In here.</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <script>
+      // Set active nav link
+      (function() {
+        const navLinks = document.querySelectorAll('.nav-link-custom');
+        navLinks.forEach(link => {
+          if (link.getAttribute('href').includes('findmatch')) {
+            link.classList.add('active');
+          }
+        });
+      })();
+
+      // Admin dropdown toggle (click handler as fallback)
+      (function() {
+        const adminBtn = document.getElementById('adminIconBtn');
+        const adminDropdown = document.getElementById('adminDropdown');
+        const adminWrapper = document.querySelector('.admin-access-wrapper');
+        
+        if (adminBtn && adminDropdown) {
+          // Toggle on click
+          adminBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            adminDropdown.classList.toggle('show');
+          });
+
+          // Close when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!adminWrapper.contains(e.target)) {
+              adminDropdown.classList.remove('show');
+            }
+          });
+
+          // Prevent dropdown from closing when clicking inside it
+          adminDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
+        }
+      })();
+    </script>
+
+    <main class="findmatch-main">
+      <div class="match-container">
+        <div class="match-header">
+          <h1>Find Your Match</h1>
+          <p>
+            Chat with us about your interests, hobbies, and course to discover
+            student organizations that match your passions.
+          </p>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="chat-container">
+          <div class="chat-history" id="chatHistory">
+            <!-- Chat messages will be dynamically inserted here -->
+          </div>
+
+          <div class="chat-input-container">
+            <input
+              type="text"
+              id="chatInput"
+              class="chat-input"
+              placeholder="Type your interests, hobbies, or course..."
+              aria-label="Chat input"
+            />
+            <button type="button" id="sendBtn" class="send-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+
+          <div class="action-section" id="actionSection" style="display: none">
+            <button type="button" class="btn-primary" id="findMatchesBtn">
+              Find My Matches
+            </button>
+          </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection" style="display: none">
+          <h2>Your Matches</h2>
+          <div class="results-list" id="resultsList"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Organization Detail Modal -->
+    <div id="orgModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-container">
+        <button class="modal-close" id="modalClose" aria-label="Close modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-content" id="modalContent">
+          <!-- Content will be dynamically inserted here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Initialize Supabase client
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Store organizations data for matching
+      let allOrganizations = [];
+
+      // Load organizations from Supabase on page load
+      document.addEventListener('DOMContentLoaded', async () => {
+        const { data } = await supabase.from('organizations').select('*');
+        if (data) {
+          allOrganizations = data;
+        }
+      });
+
+      // Listen for card click events to open modal
+      document.addEventListener('orgCardClick', (event) => {
+        const org = event.detail.organization;
+        openModal(org);
+      });
+
+      // Hardcoded CLUB_DATA removed - now using Supabase
+
+      // Helper functions
+      function buildLogoPath(club) {
+        const base = `../assets/${club.logo || "default"}`;
+        return { primary: `${base}.png`, fallback: `${base}.jpg` };
+      }
+
+      // State management
+      const selectedInterests = [];
+      const chatHistory = document.getElementById("chatHistory");
+      const chatInput = document.getElementById("chatInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const actionSection = document.getElementById("actionSection");
+      const findMatchesBtn = document.getElementById("findMatchesBtn");
+      const resultsSection = document.getElementById("resultsSection");
+      const resultsList = document.getElementById("resultsList");
+
+      // Bot responses pool (for fallback when AI is not available)
+      const botResponses = [
+        "Got it! Tell me more about your interests.",
+        "Interesting! What else are you passionate about?",
+        "Thanks for sharing! Anything else you'd like to add?",
+        "Great! Keep going—what else interests you?",
+        "Noted! Share more about yourself.",
+      ];
+
+      let responseIndex = 0;
+
+      // AI Integration Architecture
+      // This function will be called when AI integration is implemented
+      // For now, it uses fallback responses
+      async function callGeminiAPI(userInput) {
+        // TODO: Replace with actual Gemini API call
+        // Example structure:
+        // const response = await fetch('YOUR_GEMINI_API_ENDPOINT', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ message: userInput, context: selectedInterests })
+        // });
+        // const data = await response.json();
+        // return data.response;
+        
+        // Fallback: Use predefined responses for now
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            const response = botResponses[responseIndex % botResponses.length];
+            responseIndex++;
+            resolve(response);
+          }, 500);
+        });
+      }
+
+      // Initialize chat with bot greeting
+      function initChat() {
+        addBotMessage(
+          "Hello! Tell me about yourself: What are your hobbies, course, or interests?"
+        );
+      }
+
+      // Add message to chat
+      function addMessage(text, isBot = false) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `chat-message ${isBot ? "bot-message" : "user-message"}`;
+        messageDiv.textContent = text;
+        chatHistory.appendChild(messageDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      // Add bot message
+      function addBotMessage(text) {
+        addMessage(text, true);
+      }
+
+      // Add user message
+      function addUserMessage(text) {
+        addMessage(text, false);
+      }
+
+      // Send message handler
+      async function sendMessage() {
+        const inputText = chatInput.value.trim();
+        if (!inputText) return;
+
+        // Add user message
+        addUserMessage(inputText);
+        
+        // Store in selectedInterests array
+        selectedInterests.push(inputText);
+
+        // Clear input
+        chatInput.value = "";
+
+        // Show Find My Matches button if at least one interest
+        if (selectedInterests.length > 0) {
+          actionSection.style.display = "flex";
+        }
+
+        // AI Response: Call Gemini API (or use fallback)
+        try {
+          const aiResponse = await callGeminiAPI(inputText);
+          addBotMessage(aiResponse);
+        } catch (error) {
+          console.error("AI API error:", error);
+          // Fallback to predefined responses
+          const response = botResponses[responseIndex % botResponses.length];
+          addBotMessage(response);
+          responseIndex++;
+        }
+      }
+
+      // Send button click
+      sendBtn.addEventListener("click", sendMessage);
+
+      // Enter key press
+      chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          sendMessage();
+        }
+      });
+
+      // Keyword matching function
+      function extractKeywords(text) {
+        return text.toLowerCase().split(/\s+/);
+      }
+
+      // Matching algorithm with keyword matching
+      function findMatches() {
+        if (selectedInterests.length === 0) return [];
+
+        // Combine all user inputs into one string
+        const combinedInput = selectedInterests.join(" ").toLowerCase();
+        const userKeywords = extractKeywords(combinedInput);
+        
+        const matches = [];
+
+        allOrganizations.forEach((org) => {
+          let matchCount = 0;
+          const matchedKeywords = [];
+
+          // Check organization name
+          if (combinedInput.includes(org.name.toLowerCase()) || 
+              org.name.toLowerCase().includes(combinedInput)) {
+            matchCount += 2;
+          }
+
+          // Check description
+          if (org.description && (
+              combinedInput.includes(org.description.toLowerCase()) ||
+              org.description.toLowerCase().includes(combinedInput)
+            )) {
+            matchCount += 2;
+          }
+
+          // Check categories
+          if (org.categories && Array.isArray(org.categories)) {
+            org.categories.forEach((category) => {
+              if (combinedInput.includes(category.toLowerCase())) {
+                matchCount++;
+                if (!matchedKeywords.includes(category)) {
+                  matchedKeywords.push(category);
+                }
+              }
+            });
+          }
+
+          // Check affiliation
+          if (org.affiliation && combinedInput.includes(org.affiliation.toLowerCase())) {
+            matchCount++;
+          }
+
+          if (matchCount > 0) {
+            const matchPercentage = Math.min(
+              Math.round((matchCount / Math.max(selectedInterests.length, 2)) * 100),
+              99
+            );
+
+            matches.push({
+              ...org,
+              matchPercentage,
+              matchedKeywords,
+            });
+          }
+        });
+
+        // Sort by percentage (highest first)
+        matches.sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+        return matches;
+      }
+
+      // Modal functions
+      const modal = document.getElementById("orgModal");
+      const modalBackdrop = document.getElementById("modalBackdrop");
+      const modalClose = document.getElementById("modalClose");
+      const modalContent = document.getElementById("modalContent");
+
+      function buildLogoPath(club) {
+        const base = `../assets/${club.logo || "default"}`;
+        return { primary: `${base}.png`, fallback: `${base}.jpg` };
+      }
+
+      function openModal(org) {
+        // Handle both old club format and new org format from Supabase
+        const club = org;
+        const logo = buildLogoPath(club);
+        const primaryCategory = (club.categories && club.categories.length > 0) ? club.categories[0] : "Academic";
+        const email = club.email || "contact@tup.edu.ph";
+        const facultyAdvisor = club.facultyAdvisor || "To be announced";
+        const memberCount = club.memberCount || "50+";
+        const focus = club.focus || ["Student Development", "Community Engagement"];
+        const activities = club.activities || ["Regular Meetings", "Campus Events"];
+        // Handle affiliation - can be string or array
+        const affiliation = Array.isArray(club.affiliation) ? club.affiliation.join(" · ") : (club.affiliation || "TUP Manila");
+
+        modalContent.innerHTML = `
+          <div class="modal-main">
+            <div class="modal-header-section">
+              <div class="modal-logo">
+                <img
+                  src="${logo.primary}"
+                  alt="${club.name} logo"
+                  onerror="this.onerror=null;this.src='${logo.fallback}';"
+                />
+              </div>
+              <div class="modal-title-section">
+                <h2>${club.name}</h2>
+                <span class="modal-category-badge">${primaryCategory}</span>
+                ${club.matchPercentage ? `<span class="match-badge">${club.matchPercentage}% Match</span>` : ''}
+              </div>
+            </div>
+            
+            <div class="modal-about">
+              <h3>About</h3>
+              <p>${club.description}</p>
+            </div>
+
+            <div class="modal-focus">
+              <h3>Focus & Activities</h3>
+              <div class="focus-list">
+                <div class="focus-item">
+                  <strong>Core Focus:</strong>
+                  <ul>
+                    ${Array.isArray(focus) ? focus.map(f => `<li>${f}</li>`).join("") : `<li>${focus}</li>`}
+                  </ul>
+                </div>
+                <div class="activities-item">
+                  <strong>Recent Activities:</strong>
+                  <ul>
+                    ${Array.isArray(activities) ? activities.map(a => `<li>${a}</li>`).join("") : `<li>${activities}</li>`}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-members">
+              <h3>Organization Size</h3>
+              <p class="member-count">${memberCount} Active Members</p>
+            </div>
+          </div>
+
+          <div class="modal-contact">
+            <h3>Get In Touch</h3>
+            <div class="contact-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+              </svg>
+              <a href="${club.url}" target="_blank" rel="noopener noreferrer" class="contact-link">
+                Visit Facebook Page
+              </a>
+            </div>
+            <div class="contact-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <a href="mailto:${email}" class="contact-link">${email}</a>
+            </div>
+            <div class="contact-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <div class="contact-info">
+                <strong>Faculty Advisor:</strong>
+                <p>${facultyAdvisor}</p>
+              </div>
+            </div>
+            ${club.is_active ? `
+            <div class="modal-request-section">
+              <button class="btn-request-join" id="requestJoinBtn">
+                Request to Join
+              </button>
+            </div>
+            ` : `
+            <div class="modal-request-section">
+              <p class="request-inactive-message">This organization is currently not accepting new members.</p>
+            </div>
+            `}
+          </div>
+        `;
+        
+        // Add event listener for Request to Join button if it exists
+        const requestBtn = document.getElementById("requestJoinBtn");
+        if (requestBtn) {
+          requestBtn.addEventListener("click", () => {
+            // TODO: Implement request to join form/modal
+            alert(`Request to join ${club.name} has been submitted!`);
+          });
+        }
+        
+        modal.setAttribute("aria-hidden", "false");
+        modal.classList.add("modal-open");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeModal() {
+        modal.setAttribute("aria-hidden", "true");
+        modal.classList.remove("modal-open");
+        document.body.style.overflow = "";
+      }
+
+      modalBackdrop.addEventListener("click", closeModal);
+      modalClose.addEventListener("click", closeModal);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("modal-open")) {
+          closeModal();
+        }
+      });
+
+      // Card rendering now uses renderOrgCardHTML from student-orgs.js module
+
+      // Render results using unified card component
+      function renderResults(matches) {
+        resultsList.innerHTML = "";
+
+        if (matches.length === 0) {
+          resultsList.innerHTML = `
+            <div class="no-matches">
+              <p>No perfect matches found. Try sharing more about your interests or <a href="browse.html">browse all clubs</a>.</p>
+            </div>
+          `;
+          resultsSection.style.display = "block";
+          return;
+        }
+
+        // Create a wrapper for cards grid
+        const cardsWrapper = document.createElement("div");
+        cardsWrapper.className = "cards";
+        cardsWrapper.style.display = "grid";
+        cardsWrapper.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+        cardsWrapper.style.gap = "1.25rem";
+
+        matches.forEach((match) => {
+          // Generate HTML card with match percentage
+          const cardHtml = renderOrgCardHTML(match, match.matchPercentage);
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = cardHtml;
+          const card = tempDiv.firstElementChild;
+          if (card) {
+            card.addEventListener('click', () => {
+              const event = new CustomEvent('orgCardClick', { detail: { organization: match } });
+              document.dispatchEvent(event);
+            });
+            cardsWrapper.appendChild(card);
+          }
+        });
+
+        resultsList.appendChild(cardsWrapper);
+        resultsSection.style.display = "block";
+        resultsSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      // Find matches button handler
+      findMatchesBtn.addEventListener("click", () => {
+        const matches = findMatches();
+        renderResults(matches);
+      });
+
+      // Initialize chat on load
+      initChat();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect • Organization Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/org_navbar.css" />
+    <link rel="stylesheet" href="../styles/admin.css" />
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body class="org-portal-body">
+    <div class="background-glow" aria-hidden="true"></div>
+    <!-- Organization Navbar -->
+    <header class="org-header-custom">
+      <div class="org-navbar-content-custom">
+        <div class="org-navbar-spacer"></div>
+        <a href="#" class="org-navbar-logo-custom" onclick="return false;">TUPConnect</a>
+        <nav class="org-nav-links-custom">
+          <a href="#dashboard" class="org-nav-link-custom active" data-section="dashboard">Dashboard</a>
+          <a href="#profile" class="org-nav-link-custom" data-section="profile">Profile Management</a>
+          <a href="#applications" class="org-nav-link-custom" data-section="applications">Application Review</a>
+        </nav>
+        <div class="org-navbar-spacer"></div>
+        <div class="org-profile-wrapper">
+          <button class="org-profile-icon-btn" id="orgProfileBtn" aria-label="Profile menu" title="Profile">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="org-profile-dropdown" id="orgProfileDropdown">
+            <div class="org-profile-info">
+              <div class="org-profile-role" id="orgProfileRole">Org Officer</div>
+              <div class="org-profile-email" id="orgProfileEmail">officer@organization.tup.edu.ph</div>
+            </div>
+            <hr class="org-profile-divider">
+            <a href="login.html" class="org-profile-link" id="orgLogoutBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <main class="org-main-wrapper">
+      <div class="org-content-centered">
+          <!-- Dashboard Section -->
+          <section id="dashboard" class="org-section active">
+            <div class="admin-content-header">
+              <h1>Dashboard Overview</h1>
+            </div>
+
+            <div class="dashboard-cards">
+              <div class="dashboard-card">
+                <div class="dashboard-card-icon pending">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+                <div class="dashboard-card-content">
+                  <h3>Pending Requests</h3>
+                  <p class="dashboard-card-value" id="pendingCount">0</p>
+                  <p class="dashboard-card-label">Applications awaiting review</p>
+                </div>
+              </div>
+
+              <div class="dashboard-card">
+                <div class="dashboard-card-icon members">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+                <div class="dashboard-card-content">
+                  <h3>Total Members</h3>
+                  <p class="dashboard-card-value" id="totalMembers">0</p>
+                  <p class="dashboard-card-label">Active organization members</p>
+                </div>
+              </div>
+
+              <div class="dashboard-card">
+                <div class="dashboard-card-icon profile">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <div class="dashboard-card-content">
+                  <h3>Profile Completion</h3>
+                  <p class="dashboard-card-value" id="profileCompletion">0%</p>
+                  <p class="dashboard-card-label" id="profileStatus">Incomplete</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Profile Management Section -->
+          <section id="profile" class="org-section">
+            <div class="admin-content-header">
+              <h1>Profile Management</h1>
+            </div>
+            <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Update your organization's public-facing information</p>
+
+            <div class="org-table-container">
+              <form id="profileForm" class="profile-form">
+                <div class="form-group">
+                  <label for="orgAbout">About Section *</label>
+                  <textarea
+                    id="orgAbout"
+                    name="orgAbout"
+                    rows="6"
+                    placeholder="Describe your organization's mission, values, and purpose..."
+                    required
+                  ></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label for="orgActivities">Activities & Focus *</label>
+                  <textarea
+                    id="orgActivities"
+                    name="orgActivities"
+                    rows="5"
+                    placeholder="List your organization's key activities, events, and focus areas. You can use bullet points or paragraphs..."
+                    required
+                  ></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label for="applicationLink">Application Link *</label>
+                  <input
+                    type="url"
+                    id="applicationLink"
+                    name="applicationLink"
+                    placeholder="https://forms.google.com/your-application-form"
+                    required
+                  />
+                  <small style="color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; display: block;">
+                    External form URL (e.g., Google Forms) where students can apply to join your organization
+                  </small>
+                </div>
+
+                <div class="form-actions" style="margin-top: 2rem;">
+                  <button type="button" class="btn-secondary" id="resetProfileBtn">Reset</button>
+                  <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+
+                <div class="modal-message" id="profileMessage" style="margin-top: 1rem;"></div>
+              </form>
+            </div>
+          </section>
+
+          <!-- Application Review Section -->
+          <section id="applications" class="org-section">
+            <div class="admin-content-header">
+              <h1>Application Review</h1>
+            </div>
+            <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Review and process student applications to join your organization</p>
+
+            <div class="org-table-container">
+              <table class="org-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Student Email</th>
+                    <th>Submitted CV/Resume</th>
+                    <th>Date Submitted</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="applicationsTableBody">
+                  <!-- Applications will be dynamically inserted here -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      // Initialize Supabase client
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Verify session on page load - only allow 'org_officer' role
+      let sessionData = null;
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Verify session
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (sessionError || !session || !session.user) {
+            window.location.href = 'login.html?error=session_expired';
+            return;
+          }
+
+          const userId = session.user.id;
+
+          // Get user's role from user_roles table
+          const { data: userRoleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role, organization_id')
+            .eq('user_id', userId)
+            .single();
+
+          if (roleError || !userRoleData) {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html?error=no_role_assigned';
+            return;
+          }
+
+          const userRole = userRoleData.role;
+
+          // Check if user's role is org_officer
+          if (userRole !== 'org_officer') {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html?error=access_denied';
+            return;
+          }
+
+          sessionData = {
+            isAuthenticated: true,
+            user: session.user,
+            role: userRole,
+            organizationId: userRoleData.organization_id
+          };
+        } catch (error) {
+          console.error('Session verification error:', error);
+          window.location.href = 'login.html?error=verification_failed';
+          return;
+        }
+        
+        if (!sessionData || !sessionData.isAuthenticated) {
+          return;
+        }
+
+        // User is authenticated as org_officer - initialize portal
+        console.log('Org Officer authenticated:', sessionData.user.email);
+        console.log('Organization ID:', sessionData.organizationId);
+        
+        // Update profile info
+        const orgProfileEmailEl = document.getElementById('orgProfileEmail');
+        const orgProfileRoleEl = document.getElementById('orgProfileRole');
+        if (orgProfileEmailEl && sessionData.user.email) {
+          orgProfileEmailEl.textContent = sessionData.user.email;
+        }
+        if (orgProfileRoleEl) {
+          orgProfileRoleEl.textContent = 'Org Officer';
+        }
+
+        // Initialize organization navbar functionality
+        const orgProfileBtn = document.getElementById('orgProfileBtn');
+        const orgProfileDropdown = document.getElementById('orgProfileDropdown');
+        const orgProfileWrapper = document.querySelector('.org-profile-wrapper');
+        const orgLogoutBtn = document.getElementById('orgLogoutBtn');
+
+        if (orgProfileBtn && orgProfileDropdown) {
+          // Toggle on click
+          orgProfileBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            orgProfileDropdown.classList.toggle('show');
+          });
+
+          // Close when clicking outside
+          document.addEventListener('click', function(e) {
+            if (orgProfileWrapper && !orgProfileWrapper.contains(e.target)) {
+              orgProfileDropdown.classList.remove('show');
+            }
+          });
+
+          // Prevent dropdown from closing when clicking inside it
+          orgProfileDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
+        }
+
+        // Handle logout
+        if (orgLogoutBtn) {
+          orgLogoutBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            try {
+              await supabase.auth.signOut();
+              sessionStorage.clear();
+              localStorage.removeItem('tupconnect_user_role');
+              localStorage.removeItem('tupconnect_organization_id');
+              window.location.href = 'login.html';
+            } catch (error) {
+              console.error('Logout error:', error);
+              window.location.href = 'login.html';
+            }
+          });
+        }
+
+        // Initialize portal after authentication
+        initializePortal(sessionData.organizationId);
+      });
+
+      // Mock organization data
+      let organizationProfile = {
+        name: "Computer Students' Association",
+        about: "The Computer Students' Association is dedicated to fostering innovation, collaboration, and excellence in computer science and technology. We provide a platform for students to enhance their skills, network with industry professionals, and participate in exciting tech projects.",
+        activities: "• Monthly coding workshops and hackathons\n• Tech talks with industry experts\n• Collaborative software development projects\n• Annual programming competitions\n• Community outreach programs",
+        applicationLink: "https://forms.google.com/example-application-form"
+      };
+
+      // Mock applications data
+      let applications = [
+        {
+          id: 1,
+          studentName: "Juan Dela Cruz",
+          studentEmail: "juan.delacruz@tup.edu.ph",
+          dateSubmitted: "2024-01-15",
+          status: "Pending",
+          cv_link: "https://example.com/cv/juan-dela-cruz.pdf"
+        },
+        {
+          id: 2,
+          studentName: "Maria Santos",
+          studentEmail: "maria.santos@tup.edu.ph",
+          dateSubmitted: "2024-01-18",
+          status: "Pending",
+          cv_link: "https://example.com/cv/maria-santos.pdf"
+        },
+        {
+          id: 3,
+          studentName: "Carlos Rodriguez",
+          studentEmail: "carlos.rodriguez@tup.edu.ph",
+          dateSubmitted: "2024-01-20",
+          status: "Approved",
+          cv_link: "https://example.com/cv/carlos-rodriguez.pdf"
+        },
+        {
+          id: 4,
+          studentName: "Ana Garcia",
+          studentEmail: "ana.garcia@tup.edu.ph",
+          dateSubmitted: "2024-01-22",
+          status: "Pending",
+          cv_link: "https://example.com/cv/ana-garcia.pdf"
+        },
+        {
+          id: 5,
+          studentName: "Luis Mendoza",
+          studentEmail: "luis.mendoza@tup.edu.ph",
+          dateSubmitted: "2024-01-25",
+          status: "Rejected",
+          cv_link: "https://example.com/cv/luis-mendoza.pdf"
+        }
+      ];
+
+      // Initialize portal function (called after authentication)
+      function initializePortal(organizationId) {
+
+      // Navigation handling
+      const navItems = document.querySelectorAll('.org-nav-link-custom[data-section]');
+      const sections = document.querySelectorAll('.org-section');
+
+      navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          const targetSection = this.getAttribute('data-section');
+
+          // Update active nav item
+          navItems.forEach(nav => nav.classList.remove('active'));
+          this.classList.add('active');
+
+          // Show target section
+          sections.forEach(section => {
+            section.classList.remove('active');
+            if (section.id === targetSection) {
+              section.classList.add('active');
+            }
+          });
+        });
+      });
+
+      // Dashboard functions
+      function updateDashboard() {
+        const pendingCount = applications.filter(app => app.status === 'Pending').length;
+        const totalMembers = applications.filter(app => app.status === 'Approved').length;
+        
+        // Calculate profile completion
+        let completionScore = 0;
+        if (organizationProfile.about && organizationProfile.about.trim().length > 50) completionScore += 33;
+        if (organizationProfile.activities && organizationProfile.activities.trim().length > 50) completionScore += 33;
+        if (organizationProfile.applicationLink && organizationProfile.applicationLink.trim().length > 0) completionScore += 34;
+
+        document.getElementById('pendingCount').textContent = pendingCount;
+        document.getElementById('totalMembers').textContent = totalMembers;
+        document.getElementById('profileCompletion').textContent = `${completionScore}%`;
+        
+        const profileStatusEl = document.getElementById('profileStatus');
+        if (completionScore === 100) {
+          profileStatusEl.textContent = 'Complete';
+          profileStatusEl.style.color = '#16a34a';
+        } else if (completionScore >= 66) {
+          profileStatusEl.textContent = 'Almost Complete';
+          profileStatusEl.style.color = '#d97706';
+        } else {
+          profileStatusEl.textContent = 'Incomplete';
+          profileStatusEl.style.color = '#dc2626';
+        }
+      }
+
+      // Profile Management functions
+      function loadProfile() {
+        document.getElementById('orgAbout').value = organizationProfile.about || '';
+        document.getElementById('orgActivities').value = organizationProfile.activities || '';
+        document.getElementById('applicationLink').value = organizationProfile.applicationLink || '';
+      }
+
+      document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        organizationProfile.about = document.getElementById('orgAbout').value;
+        organizationProfile.activities = document.getElementById('orgActivities').value;
+        organizationProfile.applicationLink = document.getElementById('applicationLink').value;
+
+        // Show success message
+        const messageEl = document.getElementById('profileMessage');
+        messageEl.innerHTML = `
+          <div style="padding: 1rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; color: #16a34a;">
+            <strong>✓ Profile Updated Successfully!</strong><br>
+            Your organization profile has been saved and will be visible to students.
+          </div>
+        `;
+        messageEl.style.display = 'block';
+
+        // Update dashboard
+        updateDashboard();
+
+        // Hide message after 5 seconds
+        setTimeout(() => {
+          messageEl.style.display = 'none';
+        }, 5000);
+
+        // In production, this would call an API
+        console.log('Profile updated:', organizationProfile);
+      });
+
+      document.getElementById('resetProfileBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset all changes? This will restore the last saved values.')) {
+          loadProfile();
+        }
+      });
+
+      // Application Review functions
+      function renderApplications() {
+        const tbody = document.getElementById('applicationsTableBody');
+        tbody.innerHTML = '';
+
+        applications.forEach(app => {
+          const row = document.createElement('tr');
+          const statusBadge = app.status === 'Pending' 
+            ? '<span class="status-badge pending">Pending</span>'
+            : app.status === 'Approved'
+            ? '<span class="status-badge active">Approved</span>'
+            : '<span class="status-badge inactive">Rejected</span>';
+
+          row.innerHTML = `
+            <td>${app.studentName}</td>
+            <td>${app.studentEmail}</td>
+            <td>
+              <a href="${app.cv_link || '#'}" class="cv-download-link" target="_blank" onclick="handleCvDownload(event, ${app.id})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                View CV
+              </a>
+            </td>
+            <td>${new Date(app.dateSubmitted).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <div class="org-actions">
+                ${app.status === 'Pending' ? `
+                  <button class="btn-action-icon btn-accept-icon" onclick="handleApplication(${app.id}, 'Approved')" title="Accept Application">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </button>
+                  <button class="btn-action-icon btn-reject-icon" onclick="handleApplication(${app.id}, 'Rejected')" title="Reject Application">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                ` : `
+                  <span style="color: var(--muted); font-size: 0.85rem;">${app.status}</span>
+                `}
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        // Update dashboard after rendering
+        updateDashboard();
+      }
+
+      function handleApplication(appId, newStatus) {
+        const app = applications.find(a => a.id === appId);
+        if (app) {
+          app.status = newStatus;
+          renderApplications();
+          
+          // Show notification
+          const notification = document.createElement('div');
+          notification.style.cssText = 'position: fixed; top: 100px; right: 20px; background: rgba(34, 197, 94, 0.95); color: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 10000; font-family: "Space Grotesk", sans-serif;';
+          notification.innerHTML = `<strong>✓ Application ${newStatus}</strong><br>${app.studentName}'s application has been ${newStatus.toLowerCase()}.`;
+          document.body.appendChild(notification);
+          
+          setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+          }, 3000);
+
+          // In production, this would call an API
+          console.log(`Application ${appId} ${newStatus.toLowerCase()}`);
+        }
+      }
+
+      // Make function globally available
+      window.handleApplication = handleApplication;
+
+      // Handle CV download
+      function handleCvDownload(event, appId) {
+        event.preventDefault();
+        const app = applications.find(a => a.id === appId);
+        if (app && app.cv_link) {
+          // Simulate download/view
+          console.log(`Opening CV for application ${appId}: ${app.cv_link}`);
+          // In production, this would open the file or trigger download
+          window.open(app.cv_link, '_blank');
+        }
+      }
+
+      // Make function globally available
+      window.handleCvDownload = handleCvDownload;
+
+      // Logout is now handled in navbar initialization above
+
+      // Initialize portal
+      function initializePortal(organizationId) {
+        loadProfile();
+        renderApplications();
+        updateDashboard();
+      }
+    </script>
+  </body>
+</html>
+

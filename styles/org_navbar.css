@@ -1,0 +1,279 @@
+/* Organization Portal Red Floating Capsule Navbar */
+
+:root {
+  --accent: #a32727;
+  --max-width: 1100px;
+}
+
+.org-header-custom {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+  pointer-events: none;
+}
+
+.org-header-custom > * {
+  pointer-events: all;
+}
+
+.org-navbar-content-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100% - 2rem, var(--max-width));
+  max-width: var(--max-width);
+  padding: 0.75rem 1.5rem;
+  background: #a32727 !important;
+  border-radius: 999px;
+  box-shadow: 0 8px 32px rgba(163, 39, 39, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.org-navbar-spacer {
+  flex: 1;
+}
+
+.org-navbar-logo-custom {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 1rem;
+  color: #ffffff;
+  white-space: nowrap;
+  margin: 0 2rem;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.org-navbar-logo-custom:hover {
+  opacity: 0.9;
+}
+
+.org-nav-links-custom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.org-nav-link-custom {
+  position: relative;
+  padding: 0.5rem 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.org-nav-link-custom:hover {
+  color: #ffffff;
+}
+
+.org-nav-link-custom::after {
+  content: "";
+  position: absolute;
+  bottom: 0.25rem;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 80%;
+  height: 2px;
+  background: #ffffff;
+  transition: transform 0.3s ease;
+  border-radius: 2px;
+}
+
+.org-nav-link-custom:hover::after,
+.org-nav-link-custom.active::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.org-nav-link-custom.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Organization Profile Button & Dropdown */
+.org-profile-wrapper {
+  position: relative;
+  margin-left: 1rem;
+  padding: 0.5rem;
+  margin: -0.5rem 0;
+}
+
+.org-profile-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.org-profile-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.org-profile-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.org-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: all 0.3s ease;
+  min-width: 200px;
+  z-index: 1001;
+  padding: 0.5rem 0;
+}
+
+/* Pseudo-element to bridge the gap */
+.org-profile-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  height: 15px;
+  background: transparent;
+  pointer-events: all;
+}
+
+.org-profile-wrapper:hover .org-profile-dropdown,
+.org-profile-dropdown:hover,
+.org-profile-dropdown.show {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+
+.org-profile-info {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.org-profile-role {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.org-profile-email {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.org-profile-divider {
+  height: 1px;
+  background: rgba(163, 39, 39, 0.1);
+  margin: 0;
+  border: none;
+}
+
+.org-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  font-family: "Space Grotesk", sans-serif;
+  transition: background 0.2s ease;
+}
+
+.org-profile-link:hover {
+  background: rgba(163, 39, 39, 0.1);
+  color: var(--accent);
+}
+
+.org-profile-link svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .org-navbar-content-custom {
+    padding: 0.65rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .org-navbar-logo-custom {
+    margin: 0 1rem;
+    font-size: 0.9rem;
+  }
+
+  .org-nav-links-custom {
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .org-nav-link-custom {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .org-navbar-spacer {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .org-navbar-content-custom {
+    padding: 0.6rem 0.85rem;
+  }
+
+  .org-navbar-logo-custom {
+    margin: 0 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .org-nav-links-custom {
+    width: 100%;
+    justify-content: space-around;
+    margin-top: 0.25rem;
+  }
+
+  .org-nav-link-custom {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+

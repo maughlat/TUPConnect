@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect • Admin & Organization Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/navbar.css" />
+    <link rel="stylesheet" href="../styles/admin.css" />
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Activation Functions -->
+    <script src="../src/lib/activation.js"></script>
+  </head>
+  <body>
+    <div class="background-glow" aria-hidden="true"></div>
+    <header class="site-header-custom">
+      <div class="navbar-content-custom">
+        <div class="navbar-spacer"></div>
+        <a href="../index.html" class="navbar-logo-custom">TUPConnect</a>
+        <nav class="nav-links-custom">
+          <a href="browse.html" class="nav-link-custom" data-page="browse">Browse Clubs</a>
+          <a href="findmatch.html" class="nav-link-custom" data-page="findmatch">Find Your Match</a>
+          <a href="../index.html#about" class="nav-link-custom" data-page="about">About</a>
+        </nav>
+        <div class="navbar-spacer"></div>
+        <div class="admin-access-wrapper">
+          <button class="admin-icon-btn" id="adminIconBtn" aria-label="Admin access" title="Admin Login">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="admin-dropdown" id="adminDropdown">
+            <p class="admin-dropdown-text">You're an Admin or Organization?</p>
+            <a href="login.html" class="admin-dropdown-link">Log In here.</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="login-main">
+      <div class="login-container surface">
+        <div class="login-header">
+          <h1>Admin & Organization Portal</h1>
+          <p>Sign in to manage organizations and access admin features</p>
+        </div>
+
+        <!-- Role Selection Toggle -->
+        <div class="role-toggle-container">
+          <button type="button" class="role-toggle-btn active" data-role="admin" id="roleAdmin">
+            Administrator
+          </button>
+          <button type="button" class="role-toggle-btn" data-role="officer" id="roleOfficer">
+            Organization
+          </button>
+        </div>
+
+        <!-- Standard Login Form (shown for Administrator) -->
+        <form class="login-form" id="loginForm" style="display: block;">
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="admin@tup.edu.ph"
+              required
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Enter your password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button type="submit" class="btn-primary">Sign In</button>
+        </form>
+
+        <!-- Organization Officer Panel -->
+        <div id="officerPanel" style="display: none;">
+          <div class="officer-actions">
+            <button type="button" class="btn-primary" id="activateOrgBtn">Activate Your Organization</button>
+            <button type="button" class="btn-secondary" id="officerLoginBtn" style="margin-top: 1rem;">Login to Existing Account</button>
+          </div>
+
+          <!-- Activation Form (hidden by default) -->
+          <form class="activation-form" id="activationForm" style="display: none;">
+            <div class="form-group">
+              <label for="orgSelect">Select Your Organization *</label>
+              <select id="orgSelect" name="orgSelect" required>
+                <option value="">Choose an organization...</option>
+                <!-- Options will be populated by JavaScript -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="officialEmail">Enter the official email (for activation) *</label>
+              <input
+                type="email"
+                id="officialEmail"
+                name="officialEmail"
+                placeholder="officer@organization.tup.edu.ph"
+                required
+              />
+            </div>
+
+            <div class="activation-message" id="activationSuccessMessage" style="display: none;"></div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" id="cancelActivationBtn">Cancel</button>
+              <button type="submit" class="btn-primary">Send Activation Link</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="login-footer">
+          <a href="../index.html" class="back-link">← Back to Home</a>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // Initialize Supabase client (make it globally available)
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      window.supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Global role variable
+      let currentRole = 'admin';
+
+      // Store organizations data for validation
+      let allOrganizations = [];
+
+      // Fetch organizations from Supabase and populate dropdown
+      async function loadOrganizationsForActivation() {
+        try {
+          const { data, error } = await window.supabase
+            .from('organizations')
+            .select('id, name, email, is_active, account_status')
+            .order('name', { ascending: true });
+
+          if (error) {
+            console.error('Error loading organizations:', error);
+            return;
+          }
+
+          if (!data || data.length === 0) {
+            console.warn('No organizations found in database');
+            return;
+          }
+
+          // Store all organizations for email validation
+          allOrganizations = data;
+
+          // Filter out active organizations (is_active = true OR account_status = 'Account Activated')
+          const inactiveOrgs = data.filter(org => {
+            const isActive = org.is_active === true;
+            const isActivated = org.account_status === 'Account Activated';
+            return !isActive && !isActivated;
+          });
+
+          // Populate organization dropdown
+          const orgSelect = document.getElementById('orgSelect');
+          
+          // Clear existing options (except the first "Choose an organization..." option)
+          while (orgSelect.children.length > 1) {
+            orgSelect.removeChild(orgSelect.lastChild);
+          }
+
+          // Add filtered organizations
+          inactiveOrgs.forEach(org => {
+            const option = document.createElement('option');
+            option.value = org.id; // Use ID as value for easier lookup
+            option.textContent = org.name;
+            option.setAttribute('data-org-email', org.email || ''); // Store email for validation
+            orgSelect.appendChild(option);
+          });
+
+          console.log(`Loaded ${inactiveOrgs.length} inactive organizations for activation`);
+        } catch (error) {
+          console.error('Error in loadOrganizationsForActivation:', error);
+        }
+      }
+
+      // Load organizations on page load
+      document.addEventListener('DOMContentLoaded', () => {
+        loadOrganizationsForActivation();
+      });
+
+      // Role toggle functionality
+      const roleAdminBtn = document.getElementById('roleAdmin');
+      const roleOfficerBtn = document.getElementById('roleOfficer');
+      const loginForm = document.getElementById('loginForm');
+      const officerPanel = document.getElementById('officerPanel');
+      const activationForm = document.getElementById('activationForm');
+
+      roleAdminBtn.addEventListener('click', () => {
+        currentRole = 'admin';
+        roleAdminBtn.classList.add('active');
+        roleOfficerBtn.classList.remove('active');
+        loginForm.style.display = 'block';
+        officerPanel.style.display = 'none';
+        activationForm.style.display = 'none';
+      });
+
+      roleOfficerBtn.addEventListener('click', () => {
+        currentRole = 'officer';
+        roleOfficerBtn.classList.add('active');
+        roleAdminBtn.classList.remove('active');
+        loginForm.style.display = 'none';
+        officerPanel.style.display = 'block';
+        activationForm.style.display = 'none';
+      });
+
+      // Activate Organization button
+      const activateOrgBtn = document.getElementById('activateOrgBtn');
+      const cancelActivationBtn = document.getElementById('cancelActivationBtn');
+      const officerLoginBtn = document.getElementById('officerLoginBtn');
+
+      activateOrgBtn.addEventListener('click', async () => {
+        // Reload organizations to get the latest status
+        await loadOrganizationsForActivation();
+        activationForm.style.display = 'block';
+        activateOrgBtn.style.display = 'none';
+        officerLoginBtn.style.display = 'none';
+      });
+
+      cancelActivationBtn.addEventListener('click', () => {
+        activationForm.style.display = 'none';
+        activateOrgBtn.style.display = 'block';
+        officerLoginBtn.style.display = 'block';
+        document.getElementById('activationForm').reset();
+        document.getElementById('activationSuccessMessage').style.display = 'none';
+      });
+
+      officerLoginBtn.addEventListener('click', () => {
+        // Show standard login form for officers
+        loginForm.style.display = 'block';
+        officerPanel.style.display = 'none';
+        currentRole = 'officer';
+      });
+
+      // Activation form submission
+      document.getElementById('activationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const orgSelect = document.getElementById('orgSelect');
+        const orgId = orgSelect.value;
+        const selectedOption = orgSelect.options[orgSelect.selectedIndex];
+        const orgName = selectedOption.textContent;
+        const enteredEmail = document.getElementById('officialEmail').value.trim().toLowerCase();
+
+        // Clear previous error messages
+        const successMessage = document.getElementById('activationSuccessMessage');
+        successMessage.style.display = 'none';
+        successMessage.innerHTML = '';
+
+        if (!orgId || !enteredEmail) {
+          successMessage.innerHTML = `
+            <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #dc2626;">
+              <strong>✗ Error</strong><br>
+              Please fill in all required fields.
+            </div>
+          `;
+          successMessage.style.display = 'block';
+          return;
+        }
+
+        // Find the selected organization in our stored data
+        const selectedOrg = allOrganizations.find(org => org.id === orgId);
+
+        if (!selectedOrg) {
+          successMessage.innerHTML = `
+            <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #dc2626;">
+              <strong>✗ Error</strong><br>
+              Organization not found. Please refresh the page and try again.
+            </div>
+          `;
+          successMessage.style.display = 'block';
+          return;
+        }
+
+        // Validate email matches the organization's email in database
+        const orgEmail = (selectedOrg.email || '').trim().toLowerCase();
+
+        if (!orgEmail) {
+          successMessage.innerHTML = `
+            <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #dc2626;">
+              <strong>✗ Error</strong><br>
+              This organization does not have an official email address registered. Please contact an administrator.
+            </div>
+          `;
+          successMessage.style.display = 'block';
+          return;
+        }
+
+        if (enteredEmail !== orgEmail) {
+          successMessage.innerHTML = `
+            <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #dc2626;">
+              <strong>✗ Email Mismatch</strong><br>
+              The email you entered does not match the official email address for <strong>${orgName}</strong>. 
+              Please check the email address and try again.
+            </div>
+          `;
+          successMessage.style.display = 'block';
+          return;
+        }
+
+        // Email matches - trigger activation email
+        const activationResult = await triggerAccountActivation(enteredEmail);
+
+        if (activationResult.success) {
+          // Show success message
+          successMessage.innerHTML = `
+            <div style="padding: 1rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; color: #16a34a;">
+              <strong>✓ Activation Link Sent!</strong><br>
+              A secure activation link has been sent to <strong>${enteredEmail}</strong> for <strong>${orgName}</strong>. 
+              Please check your email and follow the instructions to complete your account setup.
+            </div>
+          `;
+          successMessage.style.display = 'block';
+
+          console.log(`Activation email sent to ${enteredEmail} for organization: ${orgName} (ID: ${orgId})`);
+
+          // Reset form after 5 seconds
+          setTimeout(() => {
+            document.getElementById('activationForm').reset();
+            activationForm.style.display = 'none';
+            activateOrgBtn.style.display = 'block';
+            officerLoginBtn.style.display = 'block';
+            successMessage.style.display = 'none';
+            // Reload organizations in case status changed
+            loadOrganizationsForActivation();
+          }, 5000);
+        } else {
+          // Show error message from activation function
+          successMessage.innerHTML = `
+            <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #dc2626;">
+              <strong>✗ Failed to Send Activation Email</strong><br>
+              ${activationResult.error || 'An error occurred while sending the activation email. Please try again later.'}
+            </div>
+          `;
+          successMessage.style.display = 'block';
+        }
+      });
+
+      // Standard login form submission
+      document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+          alert('Please fill in all fields');
+          return;
+        }
+
+        // Disable submit button during login
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Signing in...';
+
+        // Handle login directly (since we can't use ES modules with auth.js)
+        try {
+          // Step 1: Authenticate with Supabase
+          const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password
+          });
+
+          if (authError) {
+            throw new Error(authError.message || 'Invalid email or password');
+          }
+
+          if (!authData.user) {
+            throw new Error('Authentication failed. Please try again.');
+          }
+
+          const userId = authData.user.id;
+
+          // Step 2: Query user_roles table to get the user's actual role
+          const { data: userRoleData, error: roleError } = await window.supabase
+            .from('user_roles')
+            .select('role, organization_id')
+            .eq('user_id', userId)
+            .single();
+
+          if (roleError || !userRoleData) {
+            await window.supabase.auth.signOut();
+            throw new Error('User role not found. Please contact an administrator.');
+          }
+
+          const actualRole = userRoleData.role;
+
+          // Step 3: Normalize role values for comparison
+          const normalizedLoginRole = currentRole === 'officer' ? 'org_officer' : currentRole;
+          const normalizedActualRole = actualRole;
+
+          // Step 4: Verify role matches
+          if (normalizedActualRole !== normalizedLoginRole) {
+            await window.supabase.auth.signOut();
+            throw new Error(`Access denied. This account is registered as ${actualRole === 'org_officer' ? 'Organization Officer' : 'Administrator'}. Please select the correct role.`);
+          }
+
+          // Step 5: Role matches - redirect to appropriate dashboard
+          if (actualRole === 'admin') {
+            window.location.href = 'admin-dashboard.html';
+          } else if (actualRole === 'org_officer') {
+            window.location.href = 'organization-portal.html';
+          } else {
+            throw new Error('Unrecognized user role');
+          }
+          
+          // If login failed, re-enable button
+          if (!result.success) {
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          
+          // Show error message
+          let errorElement = document.getElementById('loginError');
+          if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'loginError';
+            errorElement.style.cssText = `
+              margin-top: 1rem;
+              padding: 0.875rem 1rem;
+              background: rgba(239, 68, 68, 0.1);
+              border: 1px solid rgba(239, 68, 68, 0.3);
+              border-radius: 8px;
+              color: #dc2626;
+              font-size: 0.875rem;
+              display: block;
+            `;
+            loginForm.insertBefore(errorElement, submitButton);
+          }
+          errorElement.textContent = error.message || 'An error occurred during login. Please check the console for details.';
+          errorElement.style.display = 'block';
+          
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+        }
+      });
+
+      // Admin dropdown toggle (click handler as fallback)
+      (function() {
+        const adminBtn = document.getElementById('adminIconBtn');
+        const adminDropdown = document.getElementById('adminDropdown');
+        const adminWrapper = document.querySelector('.admin-access-wrapper');
+        
+        if (adminBtn && adminDropdown) {
+          // Toggle on click
+          adminBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            adminDropdown.classList.toggle('show');
+          });
+
+          // Close when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!adminWrapper.contains(e.target)) {
+              adminDropdown.classList.remove('show');
+            }
+          });
+
+          // Prevent dropdown from closing when clicking inside it
+          adminDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

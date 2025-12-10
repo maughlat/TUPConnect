@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TUPConnect • Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../styles/admin_navbar.css" />
+    <link rel="stylesheet" href="../styles/admin.css" />
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body class="admin-dashboard-body">
+    <div class="background-glow" aria-hidden="true"></div>
+    <!-- Admin Navbar -->
+    <header class="admin-header-custom">
+      <div class="admin-navbar-content-custom">
+        <div class="admin-navbar-spacer"></div>
+        <a href="#" class="admin-navbar-logo-custom" onclick="return false;">TUPConnect</a>
+        <nav class="admin-nav-links-custom">
+          <a href="#org-management" class="admin-nav-link-custom active" data-section="org-management">Orgs Management</a>
+        </nav>
+        <div class="admin-navbar-spacer"></div>
+        <div class="admin-profile-wrapper">
+          <button class="admin-profile-icon-btn" id="adminProfileBtn" aria-label="Profile menu" title="Profile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="admin-profile-dropdown" id="adminProfileDropdown">
+            <div class="admin-profile-info">
+              <div class="admin-profile-role">Admin</div>
+              <div class="admin-profile-email" id="adminProfileEmail">admin@tup.edu.ph</div>
+            </div>
+            <hr class="admin-profile-divider">
+            <a href="login.html" class="admin-profile-link" id="adminLogoutBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <main class="admin-main-wrapper">
+      <div class="admin-content-centered">
+        <section id="org-management" class="admin-section active">
+            <div class="admin-content-header">
+              <h1>Organization Management</h1>
+              <button class="btn-add-org" id="addOrgBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add New Organization
+              </button>
+            </div>
+
+            <div class="org-table-container">
+              <table class="org-table">
+                <thead>
+                  <tr>
+                    <th class="col-org-name">Organization</th>
+                    <th class="col-affiliation">Affiliation</th>
+                    <th class="col-account-status">Account Status</th>
+                    <th class="col-actions">Actions</th>
+                    <th class="col-status">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="orgTableBody">
+                  <!-- Organizations will be dynamically inserted here -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+      </div>
+    </main>
+
+    <!-- Toggle Confirmation Modal -->
+    <div id="toggleConfirmModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" id="toggleConfirmModalBackdrop"></div>
+      <div class="modal-container">
+        <button class="modal-close" id="toggleConfirmModalClose" aria-label="Close modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-header">
+          <h2 id="toggleConfirmTitle">Confirm Action</h2>
+        </div>
+        <div class="modal-body">
+          <p id="toggleConfirmMessage">Are you sure you want to perform this action?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="toggleConfirmCancelBtn">Cancel</button>
+          <button type="button" class="btn-primary" id="toggleConfirmOkBtn">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activation Modal -->
+    <div id="activationModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" id="activationModalBackdrop"></div>
+      <div class="modal-container">
+        <button class="modal-close" id="activationModalClose" aria-label="Close modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-header">
+          <h2>Activate Organization Account</h2>
+        </div>
+        <div class="modal-body">
+          <p>Send a secure activation link to the organization officer's email address. They will use this link to set up their account and manage their organization profile.</p>
+          <div class="form-group">
+            <label for="activationEmail">Officer Email Address</label>
+            <input
+              type="email"
+              id="activationEmail"
+              name="activationEmail"
+              placeholder="officer@tup.edu.ph"
+              required
+            />
+          </div>
+          <div class="modal-message" id="activationMessage"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="activationCancelBtn">Cancel</button>
+          <button type="button" class="btn-primary" id="activationSendBtn">Send Link</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Organization Modal -->
+    <div id="addOrgModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" id="addOrgModalBackdrop"></div>
+      <div class="modal-container">
+        <button class="modal-close" id="addOrgModalClose" aria-label="Close modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-header">
+          <h2>Add New Organization</h2>
+        </div>
+        <form id="addOrgForm" class="modal-body">
+          <div class="form-group">
+            <label for="orgName">Organization Name *</label>
+            <input
+              type="text"
+              id="orgName"
+              name="orgName"
+              placeholder="e.g., Computer Students' Association"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="orgAbbreviation">Abbreviation *</label>
+            <input
+              type="text"
+              id="orgAbbreviation"
+              name="orgAbbreviation"
+              placeholder="e.g., CS-WITS, GDG, COMPASS"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="orgAffiliation">Affiliation *</label>
+            <select id="orgAffiliation" name="orgAffiliation" class="affiliation-select" required>
+              <option value="">Select affiliation...</option>
+              <option value="COS">COS</option>
+              <option value="CAFA">CAFA</option>
+              <option value="CLA">CLA</option>
+              <option value="CIE">CIE</option>
+              <option value="COE">COE</option>
+              <option value="CIT">CIT</option>
+              <option value="Non-College Based">Non-College Based</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="orgEmail">Official Email Address *</label>
+            <input
+              type="email"
+              id="orgEmail"
+              name="orgEmail"
+              placeholder="e.g., compass@tup.edu.ph"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Category * (Select one or more)</label>
+            <div class="category-chips-container" id="categoryChipsContainer">
+              <div class="category-chip" data-category="Academic">Academic</div>
+              <div class="category-chip" data-category="Technology">Technology</div>
+              <div class="category-chip" data-category="Arts">Arts</div>
+              <div class="category-chip" data-category="Service">Service</div>
+              <div class="category-chip" data-category="Community">Community</div>
+              <div class="category-chip" data-category="Gaming">Gaming</div>
+            </div>
+            <input type="hidden" id="selectedCategories" name="selectedCategories" required>
+          </div>
+          <div class="form-group">
+            <label for="orgDescription">Description</label>
+            <textarea
+              id="orgDescription"
+              name="orgDescription"
+              rows="3"
+              placeholder="Brief description of the organization..."
+              style="padding: 0.875rem 1rem; border: 1px solid rgba(163, 39, 39, 0.2); border-radius: 12px; font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem; background: rgba(255, 255, 255, 0.8); color: var(--fg); resize: vertical; width: 100%; box-sizing: border-box;"
+            ></textarea>
+          </div>
+          <div class="modal-message" id="addOrgMessage"></div>
+        </form>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="addOrgCancelBtn">Cancel</button>
+          <button type="submit" form="addOrgForm" class="btn-primary" id="addOrgSubmitBtn">Add Organization</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      // Initialize Supabase client
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+      // Verify session on page load - only allow 'admin' role
+      let sessionData = null;
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Verify session
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (sessionError || !session || !session.user) {
+            window.location.href = 'login.html?error=session_expired';
+            return;
+          }
+
+          const userId = session.user.id;
+
+          // Get user's role from user_roles table
+          const { data: userRoleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role, organization_id')
+            .eq('user_id', userId)
+            .single();
+
+          if (roleError || !userRoleData) {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html?error=no_role_assigned';
+            return;
+          }
+
+          const userRole = userRoleData.role;
+
+          // Check if user's role is admin
+          if (userRole !== 'admin') {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html?error=access_denied';
+            return;
+          }
+
+          sessionData = {
+            isAuthenticated: true,
+            user: session.user,
+            role: userRole,
+            organizationId: userRoleData.organization_id
+          };
+        } catch (error) {
+          console.error('Session verification error:', error);
+          window.location.href = 'login.html?error=verification_failed';
+          return;
+        }
+        
+        if (!sessionData || !sessionData.isAuthenticated) {
+          return;
+        }
+
+        // User is authenticated as admin - initialize dashboard
+        console.log('Admin authenticated:', sessionData.user.email);
+        console.log('Role:', sessionData.role);
+        
+        // Update profile email
+        const profileEmailEl = document.getElementById('adminProfileEmail');
+        if (profileEmailEl && sessionData.user.email) {
+          profileEmailEl.textContent = sessionData.user.email;
+        }
+
+        // Initialize admin navbar functionality
+        const profileBtn = document.getElementById('adminProfileBtn');
+        const profileDropdown = document.getElementById('adminProfileDropdown');
+        const profileWrapper = document.querySelector('.admin-profile-wrapper');
+        const logoutBtn = document.getElementById('adminLogoutBtn');
+
+        if (profileBtn && profileDropdown) {
+          // Toggle on click
+          profileBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('show');
+          });
+
+          // Close when clicking outside
+          document.addEventListener('click', function(e) {
+            if (profileWrapper && !profileWrapper.contains(e.target)) {
+              profileDropdown.classList.remove('show');
+            }
+          });
+
+          // Prevent dropdown from closing when clicking inside it
+          profileDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+          });
+        }
+
+        // Handle logout
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            try {
+              await supabase.auth.signOut();
+              sessionStorage.clear();
+              localStorage.removeItem('tupconnect_user_role');
+              localStorage.removeItem('tupconnect_organization_id');
+              window.location.href = 'login.html';
+            } catch (error) {
+              console.error('Logout error:', error);
+              window.location.href = 'login.html';
+            }
+          });
+        }
+
+        // Initialize dashboard after authentication
+        initializeDashboard();
+      });
+
+      // Organizations data (loaded from Supabase)
+      let organizations = [];
+
+      // Initialize dashboard function (called after authentication)
+      async function initializeDashboard() {
+        await fetchOrganizations();
+        renderOrganizations();
+      }
+
+      // Fetch organizations from Supabase
+      async function fetchOrganizations() {
+        try {
+          const { data, error } = await supabase
+            .from('organizations')
+            .select('*')
+            .order('name', { ascending: true });
+
+          if (error) {
+            console.error('Error fetching organizations:', error);
+            alert('Failed to load organizations. Please refresh the page.');
+            return;
+          }
+
+          // Transform data to match expected format
+          organizations = (data || []).map(org => {
+            const accountStatus = org.account_status || 'No Account';
+            // Force is_active to false if account_status is 'No Account' or 'Pending Activation'
+            const isActive = (accountStatus === 'Account Activated') ? (org.is_active || false) : false;
+            
+            return {
+              id: org.id,
+              name: org.name,
+              abbreviation: org.abbreviation || '',
+              category: (org.categories && org.categories[0]) || 'Academic',
+              categories: org.categories || [],
+              affiliation: org.affiliation || '',
+              is_active: isActive,
+              account_status: accountStatus,
+              activation_email: org.email || null,
+              description: org.description || ''
+            };
+          });
+
+          console.log('Organizations loaded:', organizations.length);
+        } catch (error) {
+          console.error('Error in fetchOrganizations:', error);
+          alert('Failed to load organizations. Please refresh the page.');
+        }
+      }
+
+      // User info is now displayed in navbar profile dropdown
+
+      // Render organizations table
+      function renderOrganizations() {
+        const tbody = document.getElementById('orgTableBody');
+        tbody.innerHTML = '';
+
+        organizations.forEach(org => {
+          // Determine account status badge with proper styling
+          let accountStatusBadge = '';
+          let accountStatusClass = '';
+          if (org.account_status === 'Account Activated') {
+            accountStatusBadge = 'Account Activated';
+            accountStatusClass = 'account-status-activated';
+          } else if (org.account_status === 'Pending Activation') {
+            accountStatusBadge = 'Pending Activation';
+            accountStatusClass = 'account-status-pending';
+          } else {
+            accountStatusBadge = 'No Account';
+            accountStatusClass = 'account-status-no-account';
+          }
+
+          // Determine if toggle should be disabled (remove button is always enabled)
+          const isToggleDisabled = org.account_status === 'No Account' || org.account_status === 'Pending Activation';
+
+          // Action buttons - Toggle Switch and Remove
+          const actionButtons = `
+            <div class="org-action-buttons">
+              <label class="toggle-switch-wrapper ${isToggleDisabled ? 'disabled' : ''}" title="${isToggleDisabled ? 'Cannot toggle: Account not activated' : 'Toggle organization status'}">
+                <input type="checkbox" 
+                       class="org-status-toggle" 
+                       data-org-id="${org.id}"
+                       ${org.is_active ? 'checked' : ''}
+                       ${isToggleDisabled ? 'disabled' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+              <button class="btn-remove-icon" 
+                      onclick="removeOrganization('${org.id}')" 
+                      title="Remove organization">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
+          `;
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="cell-org-name">
+              <div class="org-name">${org.name}</div>
+            </td>
+            <td class="cell-affiliation">
+              <span class="org-category">${org.affiliation || 'N/A'}</span>
+            </td>
+            <td class="cell-account-status">
+              <span class="account-status-badge ${accountStatusClass}">${accountStatusBadge}</span>
+            </td>
+            <td class="cell-actions">
+              <div class="org-actions">
+                ${actionButtons}
+              </div>
+            </td>
+            <td class="cell-status">
+              <span class="status-badge ${org.is_active ? 'active' : 'inactive'}">
+                ${org.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // Toggle organization status (Activate/Deactivate) with confirmation
+      let pendingToggleOrgId = null;
+      let pendingToggleState = null;
+      let originalToggleState = null;
+
+      const toggleConfirmModal = document.getElementById('toggleConfirmModal');
+      const toggleConfirmModalBackdrop = document.getElementById('toggleConfirmModalBackdrop');
+      const toggleConfirmTitle = document.getElementById('toggleConfirmTitle');
+      const toggleConfirmMessage = document.getElementById('toggleConfirmMessage');
+      const toggleConfirmCancelBtn = document.getElementById('toggleConfirmCancelBtn');
+      const toggleConfirmOkBtn = document.getElementById('toggleConfirmOkBtn');
+      const toggleConfirmModalClose = document.getElementById('toggleConfirmModalClose');
+
+      function openToggleConfirmModal(orgId, newState, orgName) {
+        pendingToggleOrgId = orgId;
+        pendingToggleState = newState;
+        const action = newState ? 'ACTIVATE' : 'DEACTIVATE';
+        toggleConfirmTitle.textContent = 'Confirm Organization Status Change';
+        toggleConfirmMessage.textContent = `Are you sure you want to ${action} "${orgName}"?`;
+        toggleConfirmModal.classList.add('modal-open');
+      }
+
+      function closeToggleConfirmModal() {
+        toggleConfirmModal.classList.remove('modal-open');
+        pendingToggleOrgId = null;
+        pendingToggleState = null;
+        originalToggleState = null;
+      }
+
+      toggleConfirmModalBackdrop.addEventListener('click', closeToggleConfirmModal);
+      toggleConfirmModalClose.addEventListener('click', () => {
+        // Revert toggle to original state
+        if (pendingToggleOrgId !== null && originalToggleState !== null) {
+          const toggle = document.querySelector(`.org-status-toggle[data-org-id="${pendingToggleOrgId}"]`);
+          if (toggle) {
+            toggle.checked = originalToggleState;
+          }
+        }
+        closeToggleConfirmModal();
+      });
+      
+      toggleConfirmCancelBtn.addEventListener('click', () => {
+        // Revert toggle to original state
+        if (pendingToggleOrgId !== null && originalToggleState !== null) {
+          const toggle = document.querySelector(`.org-status-toggle[data-org-id="${pendingToggleOrgId}"]`);
+          if (toggle) {
+            toggle.checked = originalToggleState;
+          }
+        }
+        closeToggleConfirmModal();
+      });
+
+      toggleConfirmOkBtn.addEventListener('click', async () => {
+        if (pendingToggleOrgId !== null && pendingToggleState !== null) {
+          const org = organizations.find(o => o.id === pendingToggleOrgId);
+          if (org) {
+            // Update in database
+            try {
+              const { error } = await supabase
+                .from('organizations')
+                .update({ is_active: pendingToggleState })
+                .eq('id', pendingToggleOrgId);
+
+              if (error) {
+                console.error('Error toggling organization activation:', error);
+                alert('Failed to update organization status. Please try again.');
+                // Revert toggle if update failed
+                const toggle = document.querySelector(`.org-status-toggle[data-org-id="${pendingToggleOrgId}"]`);
+                if (toggle) {
+                  toggle.checked = !pendingToggleState;
+                }
+                closeToggleConfirmModal();
+                return;
+              }
+
+              // Update local data
+              org.is_active = pendingToggleState;
+              renderOrganizations();
+              console.log(`Organization ${pendingToggleOrgId} status toggled to ${pendingToggleState ? 'Active' : 'Inactive'}`);
+            } catch (error) {
+              console.error('Error in toggle operation:', error);
+              alert('Failed to update organization status. Please try again.');
+              // Revert toggle if update failed
+              const toggle = document.querySelector(`.org-status-toggle[data-org-id="${pendingToggleOrgId}"]`);
+              if (toggle) {
+                toggle.checked = !pendingToggleState;
+              }
+            }
+          }
+        }
+        closeToggleConfirmModal();
+      });
+
+      // Handle toggle switch changes
+      document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('org-status-toggle')) {
+          const toggle = e.target;
+          const orgId = toggle.getAttribute('data-org-id'); // Keep as string (UUID)
+          const org = organizations.find(o => o.id === orgId);
+          
+          if (!org) return;
+
+          // Check if button should be disabled
+          const isButtonDisabled = org.account_status === 'No Account' || org.account_status === 'Pending Activation';
+          if (isButtonDisabled) {
+            toggle.checked = !toggle.checked; // Revert immediately
+            return;
+          }
+
+          const newState = toggle.checked;
+          originalToggleState = !newState; // Store original state for revert
+
+          // Intercept and show confirmation modal
+          toggle.checked = !newState; // Temporarily revert
+          openToggleConfirmModal(orgId, newState, org.name);
+        }
+      });
+
+      // Remove organization (always enabled, regardless of account status)
+      async function removeOrganization(orgId) {
+        const org = organizations.find(o => o.id === orgId);
+        if (!org) return;
+
+        if (confirm('Are you sure you want to remove this organization?')) {
+          const orgName = org.name;
+          
+          try {
+            const { error } = await supabase
+              .from('organizations')
+              .delete()
+              .eq('id', orgId);
+
+            if (error) {
+              console.error('Error removing organization:', error);
+              alert('Failed to remove organization. Please try again.');
+              return;
+            }
+
+            // Update local data
+            organizations = organizations.filter(o => o.id !== orgId);
+            renderOrganizations();
+            console.log(`Organization ${orgId} (${orgName}) removed`);
+          } catch (error) {
+            console.error('Error in removeOrganization:', error);
+            alert('Failed to remove organization. Please try again.');
+          }
+        }
+      }
+
+      // Make function globally available
+      window.removeOrganization = removeOrganization;
+
+      // Activation Modal
+      const activationModal = document.getElementById('activationModal');
+      const activationModalBackdrop = document.getElementById('activationModalBackdrop');
+      const activationModalClose = document.getElementById('activationModalClose');
+      const activationCancelBtn = document.getElementById('activationCancelBtn');
+      const activationSendBtn = document.getElementById('activationSendBtn');
+      const activationEmail = document.getElementById('activationEmail');
+      const activationMessage = document.getElementById('activationMessage');
+      let currentOrgId = null;
+
+      function openActivationModal(orgId, isResend = false) {
+        currentOrgId = orgId;
+        const org = organizations.find(o => o.id === orgId);
+        if (org) {
+          // Pre-fill email if resending or if email was previously set
+          activationEmail.value = org.activation_email || '';
+          activationMessage.classList.remove('show');
+          
+          // Update modal title if resending
+          const modalTitle = activationModal.querySelector('.modal-header h2');
+          if (modalTitle) {
+            modalTitle.textContent = isResend ? 'Resend Activation Link' : 'Activate Organization Account';
+          }
+          
+          activationModal.classList.add('modal-open');
+        }
+      }
+
+      function closeActivationModal() {
+        activationModal.classList.remove('modal-open');
+        currentOrgId = null;
+      }
+
+      activationModalBackdrop.addEventListener('click', closeActivationModal);
+      activationModalClose.addEventListener('click', closeActivationModal);
+      activationCancelBtn.addEventListener('click', closeActivationModal);
+
+      activationSendBtn.addEventListener('click', async () => {
+        const email = activationEmail.value.trim();
+        if (!email) {
+          alert('Please enter an email address');
+          return;
+        }
+
+        const org = organizations.find(o => o.id === currentOrgId);
+        if (!org) {
+          alert('Organization not found');
+          return;
+        }
+
+        try {
+          // Update organization in database
+          const { error } = await supabase
+            .from('organizations')
+            .update({
+              email: email,
+              account_status: 'Pending Activation'
+            })
+            .eq('id', currentOrgId);
+
+          if (error) {
+            console.error('Error updating organization:', error);
+            alert('Failed to send activation link. Please try again.');
+            return;
+          }
+
+          // Update local data
+          org.account_status = 'Pending Activation';
+          org.activation_email = email;
+          
+          // Re-render table to show updated status
+          renderOrganizations();
+
+          // Simulate sending activation link
+          activationMessage.textContent = `Activation link sent successfully to ${email}. The organization officer will receive instructions to set up their account. Once they complete activation, the status will automatically update to "Account Activated".`;
+          activationMessage.classList.add('show');
+
+          console.log(`Sending activation link to ${email} for organization ${currentOrgId}`);
+
+          // Note: In production, the backend would send the actual activation email
+          // and update the status when the officer completes activation
+
+          setTimeout(() => {
+            closeActivationModal();
+          }, 3000);
+        } catch (error) {
+          console.error('Error in activation:', error);
+          alert('Failed to send activation link. Please try again.');
+        }
+      });
+
+      // Simulate account activation (in production, this would be called by backend when officer completes activation)
+      function simulateAccountActivation(orgId) {
+        const org = organizations.find(o => o.id === orgId);
+        if (org && org.account_status === 'Pending Activation') {
+          org.account_status = 'Account Activated';
+          renderOrganizations();
+          console.log(`Organization ${orgId} account activated by officer`);
+          
+          // Show notification (optional)
+          const notification = document.createElement('div');
+          notification.style.cssText = 'position: fixed; top: 100px; right: 20px; background: rgba(34, 197, 94, 0.95); color: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 10000; font-family: "Space Grotesk", sans-serif;';
+          notification.innerHTML = `<strong>✓ Account Activated</strong><br>${org.name} officer has completed account setup.`;
+          document.body.appendChild(notification);
+          
+          setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+          }, 5000);
+        }
+      }
+
+      // Make function globally available for testing
+      window.simulateAccountActivation = simulateAccountActivation;
+
+      // Add Organization Modal
+      const addOrgModal = document.getElementById('addOrgModal');
+      const addOrgModalBackdrop = document.getElementById('addOrgModalBackdrop');
+      const addOrgModalClose = document.getElementById('addOrgModalClose');
+      const addOrgCancelBtn = document.getElementById('addOrgCancelBtn');
+      const addOrgForm = document.getElementById('addOrgForm');
+      const addOrgMessage = document.getElementById('addOrgMessage');
+
+      function openAddOrgModal() {
+        addOrgForm.reset();
+        addOrgMessage.classList.remove('show');
+        addOrgModal.classList.add('modal-open');
+      }
+
+      function closeAddOrgModal() {
+        addOrgModal.classList.remove('modal-open');
+      }
+
+      // Category chips selection
+      let selectedCategories = [];
+      const categoryChips = document.querySelectorAll('.category-chip');
+      const selectedCategoriesInput = document.getElementById('selectedCategories');
+
+      categoryChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          const category = this.getAttribute('data-category');
+          
+          if (this.classList.contains('active')) {
+            // Deselect
+            this.classList.remove('active');
+            selectedCategories = selectedCategories.filter(cat => cat !== category);
+          } else {
+            // Select
+            this.classList.add('active');
+            selectedCategories.push(category);
+          }
+          
+          // Update hidden input
+          selectedCategoriesInput.value = selectedCategories.join(',');
+        });
+      });
+
+      // Reset category chips when modal opens
+      function resetCategoryChips() {
+        categoryChips.forEach(chip => chip.classList.remove('active'));
+        selectedCategories = [];
+        selectedCategoriesInput.value = '';
+      }
+
+      document.getElementById('addOrgBtn').addEventListener('click', () => {
+        openAddOrgModal();
+        resetCategoryChips();
+      });
+      addOrgModalBackdrop.addEventListener('click', closeAddOrgModal);
+      addOrgModalClose.addEventListener('click', closeAddOrgModal);
+      addOrgCancelBtn.addEventListener('click', () => {
+        closeAddOrgModal();
+        resetCategoryChips();
+      });
+
+      addOrgForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Validate categories
+        if (selectedCategories.length === 0) {
+          alert('Please select at least one category');
+          return;
+        }
+
+        const formData = new FormData(addOrgForm);
+        const orgData = {
+          name: formData.get('orgName'),
+          abbreviation: formData.get('orgAbbreviation') || null,
+          description: formData.get('orgDescription') || null,
+          affiliation: formData.get('orgAffiliation') || 'NON_COLLEGE',
+          categories: selectedCategories,
+          email: formData.get('orgEmail')?.trim() || null,
+          url: formData.get('orgUrl') || null,
+          logo: formData.get('orgLogo') || null,
+          is_active: false,
+          account_status: 'No Account'
+        };
+
+        try {
+          // Add to database
+          const { data, error } = await supabase
+            .from('organizations')
+            .insert([orgData])
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Error adding organization:', error);
+            addOrgMessage.textContent = `Failed to add organization: ${error.message || 'Unknown error'}`;
+            addOrgMessage.style.background = 'rgba(239, 68, 68, 0.1)';
+            addOrgMessage.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            addOrgMessage.style.color = '#dc2626';
+            addOrgMessage.classList.add('show');
+            return;
+          }
+
+          // If organization has an email, create a user in Supabase Auth
+          const orgEmail = orgData.email;
+          if (orgEmail) {
+            console.log('Creating Auth user for organization email:', orgEmail);
+            
+            // Generate a random temporary password (user will set their own via activation email)
+            const tempPassword = Math.random().toString(36).slice(-12) + 
+                                Math.random().toString(36).slice(-12) + 
+                                Math.random().toString(36).slice(-4).toUpperCase() + '!@#';
+            
+            try {
+              // Create user in Supabase Auth
+              // Note: We use signUp to create the user, but they'll set their password via activation email
+              const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: orgEmail.trim(),
+                password: tempPassword,
+                options: {
+                  data: {
+                    is_org_officer: true,
+                    organization_id: data.id,
+                    organization_name: data.name
+                  }
+                }
+              });
+
+              if (authError) {
+                // If user already exists, that's okay - they can still use activation
+                if (authError.message && authError.message.toLowerCase().includes('already registered')) {
+                  console.log('User already exists in Auth:', orgEmail);
+                } else {
+                  console.warn('Failed to create Auth user (organization still added):', authError.message);
+                  // Don't fail the whole operation - org is already added
+                }
+              } else {
+                console.log('Auth user created successfully for:', orgEmail);
+              }
+            } catch (authErr) {
+              console.warn('Error creating Auth user (organization still added):', authErr);
+              // Don't fail the whole operation - org is already added
+            }
+          }
+
+          // Transform and add to local array
+          const newOrg = {
+            id: data.id,
+            name: data.name,
+            abbreviation: data.abbreviation || '',
+            category: (data.categories && data.categories[0]) || 'Academic',
+            categories: data.categories || [],
+            affiliation: data.affiliation || '',
+            is_active: data.is_active || false,
+            account_status: data.account_status || 'No Account',
+            activation_email: data.email || null,
+            description: data.description || ''
+          };
+
+          organizations.push(newOrg);
+          renderOrganizations();
+
+          // Show success message
+          const emailStatus = orgEmail 
+            ? ` Auth user account has been created for ${orgEmail}. The organization officer can now request an activation email.`
+            : '';
+          addOrgMessage.textContent = `Organization "${newOrg.name}" has been added successfully.${emailStatus}`;
+          addOrgMessage.style.background = 'rgba(34, 197, 94, 0.1)';
+          addOrgMessage.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+          addOrgMessage.style.color = '#16a34a';
+          addOrgMessage.classList.add('show');
+
+          console.log('New organization added:', newOrg);
+
+          setTimeout(() => {
+            closeAddOrgModal();
+            resetCategoryChips();
+          }, 2000);
+        } catch (error) {
+          console.error('Error in add organization:', error);
+          addOrgMessage.textContent = `Failed to add organization: ${error.message || 'Unknown error'}`;
+          addOrgMessage.style.background = 'rgba(239, 68, 68, 0.1)';
+          addOrgMessage.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          addOrgMessage.style.color = '#dc2626';
+          addOrgMessage.classList.add('show');
+        }
+      });
+
+      // Logout is now handled in navbar initialization
+    </script>
+  </body>
+</html>
+

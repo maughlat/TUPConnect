@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Diagnostic Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #b91c1c;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #ef4444;
+    }
+    .info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 TUPConnect Login Diagnostic Tool</h1>
+  
+  <div class="test-section">
+    <h2>1. Test Supabase Connection</h2>
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="connectionResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Test User Authentication</h2>
+    <p>Email: <strong>veliganioandrian@gmail.com</strong></p>
+    <p>Password: <strong>123456</strong></p>
+    <button onclick="testAuth()">Test Authentication</button>
+    <div id="authResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Test Role Lookup</h2>
+    <button onclick="testRole()">Test Role Lookup</button>
+    <div id="roleResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Full Login Test</h2>
+    <button onclick="testFullLogin()">Test Full Login Flow</button>
+    <div id="fullLoginResult" class="result" style="display:none;"></div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../src/lib/supabase.js';
+    window.supabase = supabase;
+
+    window.testConnection = async function() {
+      const resultDiv = document.getElementById('connectionResult');
+      resultDiv.style.display = 'block';
+      resultDiv.className = 'result info';
+      resultDiv.textContent = 'Testing connection...';
+
+      try {
+        // Test basic connection
+        const { data, error } = await supabase.from('organizations').select('count').limit(1);
+        
+        if (error) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ Connection Error:\n${JSON.stringify(error, null, 2)}`;
+        } else {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = '✅ Supabase connection successful!';
+        }
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `❌ Error: ${err.message}\n\nCheck:\n1. Supabase URL and keys in src/lib/supabase.js\n2. Internet connection\n3. Supabase project is active`;
+      }
+    };
+
+    window.testAuth = async function() {
+      const resultDiv = document.getElementById('authResult');
+      resultDiv.style.display = 'block';
+      resultDiv.className = 'result info';
+      resultDiv.textContent = 'Testing authentication...';
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'veliganioandrian@gmail.com',
+          password: '123456'
+        });
+
+        if (error) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ Authentication Failed:\n${error.message}\n\nPossible issues:\n1. User doesn't exist in Supabase Auth\n2. Wrong email or password\n3. User not confirmed\n\nCheck Supabase Dashboard → Authentication → Users`;
+        } else if (data?.user) {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✅ Authentication Successful!\n\nUser ID: ${data.user.id}\nEmail: ${data.user.email}\nCreated: ${new Date(data.user.created_at).toLocaleString()}`;
+          window.currentUser = data.user;
+        } else {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = '❌ Authentication returned no user data';
+        }
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `❌ Error: ${err.message}`;
+      }
+    };
+
+    window.testRole = async function() {
+      const resultDiv = document.getElementById('roleResult');
+      resultDiv.style.display = 'block';
+      resultDiv.className = 'result info';
+      resultDiv.textContent = 'Testing role lookup...';
+
+      try {
+        // First check if user is authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = '❌ No active session. Please run "Test Authentication" first.';
+          return;
+        }
+
+        const userId = session.user.id;
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role, organization_id')
+          .eq('user_id', userId)
+          .single();
+
+        if (roleError) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ Role Lookup Failed:\n${roleError.message}\n\nPossible issues:\n1. Role not assigned in user_roles table\n2. User ID mismatch\n\nRun this SQL:\nINSERT INTO user_roles (user_id, role)\nSELECT id, 'admin'\nFROM auth.users\nWHERE email = 'veliganioandrian@gmail.com';`;
+        } else if (roleData) {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✅ Role Found!\n\nRole: ${roleData.role}\nOrganization ID: ${roleData.organization_id || 'N/A (Admin)'}\nUser ID: ${userId}`;
+        } else {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = '❌ No role data returned';
+        }
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `❌ Error: ${err.message}`;
+      }
+    };
+
+    window.testFullLogin = async function() {
+      const resultDiv = document.getElementById('fullLoginResult');
+      resultDiv.style.display = 'block';
+      resultDiv.className = 'result info';
+      resultDiv.textContent = 'Testing full login flow...';
+
+      try {
+        // Step 1: Authenticate
+        resultDiv.textContent = 'Step 1: Authenticating...';
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: 'veliganioandrian@gmail.com',
+          password: '123456'
+        });
+
+        if (authError) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ Step 1 Failed: ${authError.message}`;
+          return;
+        }
+
+        // Step 2: Get role
+        resultDiv.textContent = 'Step 2: Getting user role...';
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role, organization_id')
+          .eq('user_id', authData.user.id)
+          .single();
+
+        if (roleError || !roleData) {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ Step 2 Failed: ${roleError?.message || 'No role found'}\n\nRun this SQL to fix:\nINSERT INTO user_roles (user_id, role)\nSELECT id, 'admin'\nFROM auth.users\nWHERE email = 'veliganioandrian@gmail.com';`;
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Step 3: Verify role
+        if (roleData.role !== 'admin') {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ Step 3 Failed: Role mismatch\n\nExpected: admin\nFound: ${roleData.role}`;
+          await supabase.auth.signOut();
+          return;
+        }
+
+        resultDiv.className = 'result success';
+        resultDiv.textContent = `✅ Full Login Test Successful!\n\nUser: ${authData.user.email}\nRole: ${roleData.role}\nUser ID: ${authData.user.id}\n\nYou should be able to login now!`;
+
+      } catch (err) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `❌ Error: ${err.message}`;
+      }
+    };
+  </script>
+</body>
+</html>
+
