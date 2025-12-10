@@ -429,7 +429,13 @@
               console.error('Error checking organization:', orgCheckError);
             }
 
-            if (orgData && orgData.account_status === 'Account Activated') {
+            // Check if organization is activated (either by account_status OR is_active)
+            const isActivated = orgData && (
+              orgData.account_status === 'Account Activated' || 
+              orgData.is_active === true
+            );
+            
+            if (isActivated) {
               // User's email matches an activated organization - create org_officer role
               console.log('Organization found for email. Creating org_officer role...');
               console.log('Organization:', orgData.name, 'ID:', orgData.id);
@@ -498,9 +504,22 @@
               console.error('Organization data:', orgData);
               
               // Check if organization exists but not activated
-              if (orgData && orgData.account_status !== 'Account Activated') {
+              // Accept either account_status OR is_active as activation indicator
+              const isNotActivated = orgData && 
+                orgData.account_status !== 'Account Activated' && 
+                orgData.is_active !== true;
+              
+              if (isNotActivated) {
+                console.error('Organization found but not activated:', {
+                  name: orgData.name,
+                  email: orgData.email,
+                  account_status: orgData.account_status,
+                  is_active: orgData.is_active
+                });
+                
+                // If password was just set, give helpful message
                 await window.supabase.auth.signOut();
-                throw new Error(`Organization account for "${orgData.name}" is not yet activated. Please complete password setup first using the activation link sent to your email.`);
+                throw new Error(`Organization account for "${orgData.name}" is not yet activated. Status: ${orgData.account_status || 'Not set'}. Please make sure you completed the password setup. If you just set your password, wait a moment and try again - the database trigger may need to process the activation.`);
               }
               
               // No matching organization - needs admin role or organization not set up
