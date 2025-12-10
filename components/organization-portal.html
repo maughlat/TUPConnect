@@ -195,17 +195,66 @@
     </main>
 
     <script type="module">
-      // Import authentication functions
-      import { verifySession, handleLogout } from '../src/lib/auth.js';
-      import { supabase } from '../src/lib/supabase.js';
+      // Initialize Supabase client (same pattern as admin-dashboard.html)
+      const supabaseUrl = 'https://rbmfimbdtiyuiflunuhx.supabase.co';
+      const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibWZpbWJkdGl5dWlmbHVudWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMzA4MDQsImV4cCI6MjA4MDYwNjgwNH0.5LUfiV2PH78x5ExLROR9b0Z9j1O1ND75JJdGnEg2r4E';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
       // Verify session and role on page load - only allow 'org_officer' role
+      let sessionData = null;
       document.addEventListener('DOMContentLoaded', async () => {
-        // Verify session with role constraint
-        const sessionData = await verifySession(['org_officer']);
+        // Verify session (inline logic, same pattern as admin-dashboard.html)
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (!sessionData.isAuthenticated) {
-          // verifySession already redirected to login, just return
+          if (sessionError || !session || !session.user) {
+            window.location.href = 'login.html?error=session_expired';
+            return;
+          }
+
+          const userId = session.user.id;
+
+          // Get user's role from user_roles table
+          const { data: userRoleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role, organization_id')
+            .eq('user_id', userId)
+            .single();
+
+          if (roleError || !userRoleData) {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html?error=no_role_assigned';
+            return;
+          }
+
+          const userRole = userRoleData.role;
+
+          // Check if user's role is org_officer
+          if (userRole !== 'org_officer') {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html?error=access_denied';
+            return;
+          }
+
+          sessionData = {
+            isAuthenticated: true,
+            user: session.user,
+            role: userRole,
+            organizationId: userRoleData.organization_id
+          };
+
+          // Store role and organization ID in localStorage
+          localStorage.setItem('tupconnect_user_role', userRole);
+          if (userRoleData.organization_id) {
+            localStorage.setItem('tupconnect_organization_id', userRoleData.organization_id);
+          }
+        } catch (error) {
+          console.error('Session verification error:', error);
+          window.location.href = 'login.html?error=verification_failed';
+          return;
+        }
+
+        if (!sessionData || !sessionData.isAuthenticated) {
           return;
         }
 
@@ -249,11 +298,20 @@
           });
         }
 
-        // Handle logout - use imported handleLogout function
+        // Handle logout
         if (orgLogoutBtn) {
           orgLogoutBtn.addEventListener('click', async function(e) {
             e.preventDefault();
-            await handleLogout();
+            try {
+              await supabase.auth.signOut();
+              sessionStorage.clear();
+              localStorage.removeItem('tupconnect_user_role');
+              localStorage.removeItem('tupconnect_organization_id');
+              window.location.href = 'login.html';
+            } catch (error) {
+              console.error('Logout error:', error);
+              window.location.href = 'login.html';
+            }
           });
         }
 
@@ -826,4 +884,3 @@
     </script>
   </body>
 </html>
-      }
