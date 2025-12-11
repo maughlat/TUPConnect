@@ -155,7 +155,31 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
     logoFallback = orgData.logo; // Same URL for fallback
   } else {
     // Legacy local file path format
-    const logoBase = `../assets/${orgData.logo || 'TUP_DEFAULT'}`;
+    // Map organization names to their logo file names (handles naming mismatches)
+    const logoMapping = {
+      'Institute of Computer Engineering Technologists Student Association': 'TUP_ICpETSA',
+      'Dugong Bughaw': 'TUP_DUGONGBUGHAW',
+      'TUP ComPAWnion': 'tup_compawnion'
+    };
+    
+    // Try mapped name first, then use orgData.logo, then try org name, finally default
+    let logoFileName = logoMapping[orgData.name] || orgData.logo;
+    
+    // If still no logo, try to derive from organization name
+    if (!logoFileName && orgData.name) {
+      // Try common patterns
+      const name = orgData.name.toUpperCase();
+      if (name.includes('COMPUTER ENGINEERING TECHNOLOGISTS')) {
+        logoFileName = 'TUP_ICpETSA';
+      } else if (name.includes('DUGONG') && name.includes('BUGHAW')) {
+        logoFileName = 'TUP_DUGONGBUGHAW';
+      } else if (name.includes('COMPAWNION')) {
+        logoFileName = 'tup_compawnion';
+      }
+    }
+    
+    // Fallback to default if still no logo found
+    const logoBase = `../assets/${logoFileName || 'TUP_COMPASS'}`;
     logoPrimary = `${logoBase}.png`;
     logoFallback = `${logoBase}.jpg`;
   }
