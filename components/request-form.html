@@ -15,11 +15,13 @@
     <style>
       .request-form-container {
         max-width: 800px;
+        width: 100%;
         margin: 4rem auto;
         padding: 2rem;
         background: rgba(255, 255, 255, 0.95);
         border-radius: 16px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
       }
 
       .form-header {
@@ -149,8 +151,13 @@
       .message {
         padding: 1rem;
         border-radius: 8px;
-        margin-bottom: 1.5rem;
+        margin-top: 1rem;
+        margin-bottom: 0;
         display: none;
+        max-width: 100%;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
 
       .message.success {
@@ -218,8 +225,6 @@
           <h3 id="orgName">Loading organization information...</h3>
         </div>
 
-        <div class="message" id="formMessage"></div>
-
         <form id="applicationForm">
           <input type="hidden" id="organizationId" name="organizationId" />
 
@@ -276,6 +281,8 @@
             <a href="browse.html" class="btn-secondary">Cancel</a>
             <button type="submit" class="btn-primary" id="submitBtn">Submit Application</button>
           </div>
+
+          <div class="message" id="formMessage"></div>
         </form>
       </div>
     </main>
