@@ -146,8 +146,12 @@ The 10 categories are:
         // If it's a model-not-found error (404), try the next model
         if (err.message && (err.message.includes('404') || err.message.includes('not found'))) {
           continue; // Try next model
-        } else if (err.message && err.message.includes('403') || err.message && err.message.includes('API key')) {
-          // API key or permission issue - don't try other models
+        } else if (err.message && err.message.includes('403')) {
+          // Check if it's a leaked key error
+          if (err.message.includes('leaked') || err.message.includes('reported')) {
+            throw new Error('Your API key was reported as leaked and has been revoked. Please create a NEW API key at https://aistudio.google.com/app/apikey and update it in Vercel environment variables. Do NOT reuse the old key.');
+          }
+          // Other 403 errors - don't try other models
           throw new Error(`API key or permission issue: ${err.message}. Please check your API key and ensure Gemini API is enabled.`);
         } else {
           // Other errors - try next model but log it
