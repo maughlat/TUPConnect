@@ -80,7 +80,12 @@ The 10 categories are:
         });
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: await response.text() }));
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { error: await response.text() };
+          }
           throw new Error(`API returned ${response.status}: ${JSON.stringify(errorData)}`);
         }
         
