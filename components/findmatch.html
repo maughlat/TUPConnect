@@ -337,12 +337,24 @@
           const userAffiliation = data.user_affiliation || 'NONE';
           const aiCategories = data.matched_categories || [];
           const aiKeywords = data.specific_keywords || [];
+          const negativeKeywords = data.negative_keywords || [];
 
-          console.log("Analysis:", { userAffiliation, aiCategories, aiKeywords });
+          console.log("Analysis:", { userAffiliation, aiCategories, aiKeywords, negativeKeywords });
 
-          // If no categories matched, return empty array
-          if (aiCategories.length === 0) {
-            return [];
+          // Fallback: If AI returns nothing useful, trigger broad search
+          if (aiCategories.length === 0 && aiKeywords.length === 0) {
+            // Return only "Open" orgs (non-college-specific) as fallback
+            const openOrgs = organizations.filter(o => 
+              !o.affiliation || 
+              o.affiliation === 'NON_COLLEGE' || 
+              o.affiliation === 'RELIGIOUS'
+            );
+            return openOrgs.map(org => ({
+              ...org,
+              matchPercentage: 20,
+              matchedCategories: [],
+              matchedKeywords: ['Broad search fallback']
+            }));
           }
 
           // Step 2: Fetch all organizations from Supabase
@@ -359,71 +371,81 @@
             return [];
           }
 
-          // Step 3: Calculate match percentage with advanced scoring
+          // Step 3: Calculate match percentage with advanced scoring (synonym matching + negative filtering)
           const matchedOrgs = organizations.map(org => {
             let score = 0;
             let explanation = [];
             
-            // --- 1. STRICT AFFILIATION CHECK (The "Gatekeeper") ---
+            // Combine all org text for analysis
+            const orgText = (org.name + " " + (org.description || "") + " " + (Array.isArray(org.activities) ? org.activities.join(" ") : (org.activities || ""))).toLowerCase();
+            const orgCats = (org.categories || []).map(c => c.toLowerCase());
+
+            // --- 1. NEGATIVE FILTER (The "Hate" Factor) ---
+            // If org text contains a negative keyword, severely penalize
+            let penalty = 0;
+            negativeKeywords.forEach(neg => {
+              const negLower = neg.toLowerCase();
+              if (orgText.includes(negLower)) penalty += 50;
+              if (orgCats.includes(negLower)) penalty += 50;
+              // Also check category names against negative keywords
+              orgCats.forEach(cat => {
+                if (cat.includes(negLower) || negLower.includes(cat)) penalty += 50;
+              });
+            });
+            if (penalty > 0) return null; // Immediately disqualify
+
+            // --- 2. AFFILIATION CHECK (The Gatekeeper) ---
             const orgAffiliation = org.affiliation || 'NON_COLLEGE';
             const isSameCollege = (userAffiliation !== 'NONE' && orgAffiliation === userAffiliation);
             const isOpenOrg = (orgAffiliation === 'NON_COLLEGE' || orgAffiliation === 'RELIGIOUS');
             
-            // If user has a college, but this org is from a DIFFERENT college (and not open),
-            // they essentially cannot join. Cap score immediately.
+            // Strict Filter: Remove Academic orgs from other colleges
+            // Exception: If keyword match is extremely high (e.g. > 2 hits), allow it but with penalty
+            // For now, simple strict filtering:
             if (userAffiliation !== 'NONE' && !isSameCollege && !isOpenOrg) {
-              return { 
-                ...org, 
-                matchPercentage: 10, 
-                matchedCategories: [],
-                matchedKeywords: ["Restricted to " + orgAffiliation] 
-              };
+              return null;
             }
 
-            // --- 2. AFFILIATION BONUS ---
             if (isSameCollege) {
-              score += 40; // Base score for being in the right department
-              explanation.push("Your Home College");
+              score += 40; 
+              explanation.push("Matches your College");
             } else if (isOpenOrg) {
-              score += 20; // Base score for open orgs
+              score += 15; 
             }
 
-            // --- 3. CATEGORY MATCHING ---
-            if (org.categories && Array.isArray(org.categories)) {
-              const matches = org.categories.filter(c => aiCategories.includes(c));
-              if (matches.length > 0) {
-                score += 30;
-                explanation.push(...matches);
-              }
+            // --- 3. CATEGORY MATCH ---
+            const catMatches = orgCats.filter(c => aiCategories.map(ac => ac.toLowerCase()).includes(c));
+            if (catMatches.length > 0) {
+              score += 25;
+              explanation.push("Category Match");
             }
 
-            // --- 4. KEYWORD SNIPING (The Accuracy Booster) ---
-            // Check if specific keywords appear in the Org Name or Description
-            // This connects "cats" to "ComPAWnion" or "Esports" to "GEAR"
+            // --- 4. KEYWORD/SYNONYM SNIPER (The Accuracy Booster) ---
             let keywordHits = 0;
-            const orgText = (org.name + " " + (org.description || "") + " " + (Array.isArray(org.activities) ? org.activities.join(" ") : (org.activities || ""))).toLowerCase();
-            
             aiKeywords.forEach(keyword => {
-              if (orgText.includes(keyword.toLowerCase())) {
+              const keywordLower = keyword.toLowerCase();
+              if (orgText.includes(keywordLower)) {
                 keywordHits++;
-                // Bonus points for specific keyword matches
-                score += 15; 
-                if (!explanation.includes(`Mentions "${keyword}"`)) {
-                  explanation.push(`Mentions "${keyword}"`);
+                score += 15; // 15 points per keyword match
+                if (!explanation.includes(`"${keyword}"`)) {
+                  explanation.push(`Matches "${keyword}"`);
                 }
               }
             });
 
+            // Bonus for multiple keyword hits (Strong Synonym Match)
+            if (keywordHits >= 2) score += 10;
+
             // Cap at 99%
             score = Math.min(Math.round(score), 99);
 
-            // Filter irrelevant results (score too low)
-            if (score < 40) return null;
+            // Filter irrelevant (score too low)
+            if (score < 35) return null;
 
             return {
               ...org,
               matchPercentage: score,
-              matchedCategories: org.categories ? org.categories.filter(c => aiCategories.includes(c)) : [],
+              matchedCategories: org.categories ? org.categories.filter(c => aiCategories.map(ac => ac.toLowerCase()).includes(c.toLowerCase())) : [],
               matchedKeywords: explanation
             };
           }).filter(o => o !== null);
