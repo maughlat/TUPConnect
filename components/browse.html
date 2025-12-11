@@ -206,7 +206,31 @@
           return { primary: club.logo, fallback: club.logo };
         } else {
           // Legacy local file path format
-          const base = `../assets/${club.logo || 'default'}`;
+          // Map organization names to their logo file names (handles naming mismatches)
+          const logoMapping = {
+            'Institute of Computer Engineering Technologists Student Association': 'TUP_ICpETSA',
+            'Dugong Bughaw': 'TUP_DUGONGBUGHAW',
+            'TUP ComPAWnion': 'tup_compawnion'
+          };
+          
+          // Try mapped name first, then use club.logo, then try org name, finally default
+          let logoFileName = logoMapping[club.name] || club.logo;
+          
+          // If still no logo, try to derive from organization name
+          if (!logoFileName && club.name) {
+            // Try common patterns
+            const name = club.name.toUpperCase();
+            if (name.includes('COMPUTER ENGINEERING TECHNOLOGISTS')) {
+              logoFileName = 'TUP_ICpETSA';
+            } else if (name.includes('DUGONG') && name.includes('BUGHAW')) {
+              logoFileName = 'TUP_DUGONGBUGHAW';
+            } else if (name.includes('COMPAWNION')) {
+              logoFileName = 'tup_compawnion';
+            }
+          }
+          
+          // Fallback to COMPASS if still no logo found
+          const base = `../assets/${logoFileName || 'TUP_COMPASS'}`;
           return { primary: `${base}.png`, fallback: `${base}.jpg` };
         }
       };
