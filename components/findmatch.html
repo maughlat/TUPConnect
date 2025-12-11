@@ -327,16 +327,21 @@
             throw new Error(`API error: ${geminiResponse.status} ${geminiResponse.statusText}`);
           }
 
-          const geminiData = await geminiResponse.json();
+          const data = await geminiResponse.json();
           
-          if (!geminiData.matched_categories || !Array.isArray(geminiData.matched_categories)) {
+          // Validate response structure
+          if (!data.matched_categories || !Array.isArray(data.matched_categories)) {
             throw new Error('Invalid response format from AI API');
           }
 
-          const aiMatchedCategories = geminiData.matched_categories;
-          
+          const userAffiliation = data.user_affiliation || 'NONE';
+          const aiCategories = data.matched_categories || [];
+          const aiKeywords = data.specific_keywords || [];
+
+          console.log("Analysis:", { userAffiliation, aiCategories, aiKeywords });
+
           // If no categories matched, return empty array
-          if (aiMatchedCategories.length === 0) {
+          if (aiCategories.length === 0) {
             return [];
           }
 
@@ -354,38 +359,79 @@
             return [];
           }
 
-          // Step 3: Calculate match percentage for each organization
-          const matches = [];
-
-          organizations.forEach((org) => {
-            if (!org.categories || !Array.isArray(org.categories) || org.categories.length === 0) {
-              return; // Skip organizations without categories
+          // Step 3: Calculate match percentage with advanced scoring
+          const matchedOrgs = organizations.map(org => {
+            let score = 0;
+            let explanation = [];
+            
+            // --- 1. STRICT AFFILIATION CHECK (The "Gatekeeper") ---
+            const orgAffiliation = org.affiliation || 'NON_COLLEGE';
+            const isSameCollege = (userAffiliation !== 'NONE' && orgAffiliation === userAffiliation);
+            const isOpenOrg = (orgAffiliation === 'NON_COLLEGE' || orgAffiliation === 'RELIGIOUS');
+            
+            // If user has a college, but this org is from a DIFFERENT college (and not open),
+            // they essentially cannot join. Cap score immediately.
+            if (userAffiliation !== 'NONE' && !isSameCollege && !isOpenOrg) {
+              return { 
+                ...org, 
+                matchPercentage: 10, 
+                matchedCategories: [],
+                matchedKeywords: ["Restricted to " + orgAffiliation] 
+              };
             }
 
-            // Find overlapping categories between AI result and organization categories
-            const overlappingCategories = org.categories.filter(orgCategory => 
-              aiMatchedCategories.includes(orgCategory)
-            );
-
-            // Calculate match percentage: (overlapping / total AI categories) * 100
-            const matchPercentage = Math.round(
-              (overlappingCategories.length / aiMatchedCategories.length) * 100
-            );
-
-            // Only include organizations with at least 1 match
-            if (matchPercentage > 0) {
-              matches.push({
-                ...org,
-                matchPercentage: Math.min(matchPercentage, 100), // Cap at 100%
-                matchedCategories: overlappingCategories // Store overlapping categories for popover
-              });
+            // --- 2. AFFILIATION BONUS ---
+            if (isSameCollege) {
+              score += 40; // Base score for being in the right department
+              explanation.push("Your Home College");
+            } else if (isOpenOrg) {
+              score += 20; // Base score for open orgs
             }
-          });
+
+            // --- 3. CATEGORY MATCHING ---
+            if (org.categories && Array.isArray(org.categories)) {
+              const matches = org.categories.filter(c => aiCategories.includes(c));
+              if (matches.length > 0) {
+                score += 30;
+                explanation.push(...matches);
+              }
+            }
+
+            // --- 4. KEYWORD SNIPING (The Accuracy Booster) ---
+            // Check if specific keywords appear in the Org Name or Description
+            // This connects "cats" to "ComPAWnion" or "Esports" to "GEAR"
+            let keywordHits = 0;
+            const orgText = (org.name + " " + (org.description || "") + " " + (Array.isArray(org.activities) ? org.activities.join(" ") : (org.activities || ""))).toLowerCase();
+            
+            aiKeywords.forEach(keyword => {
+              if (orgText.includes(keyword.toLowerCase())) {
+                keywordHits++;
+                // Bonus points for specific keyword matches
+                score += 15; 
+                if (!explanation.includes(`Mentions "${keyword}"`)) {
+                  explanation.push(`Mentions "${keyword}"`);
+                }
+              }
+            });
+
+            // Cap at 99%
+            score = Math.min(Math.round(score), 99);
+
+            // Filter irrelevant results (score too low)
+            if (score < 40) return null;
+
+            return {
+              ...org,
+              matchPercentage: score,
+              matchedCategories: org.categories ? org.categories.filter(c => aiCategories.includes(c)) : [],
+              matchedKeywords: explanation
+            };
+          }).filter(o => o !== null);
 
           // Step 4: Sort by match percentage (highest first)
-          matches.sort((a, b) => b.matchPercentage - a.matchPercentage);
+          matchedOrgs.sort((a, b) => b.matchPercentage - a.matchPercentage);
 
-          return matches;
+          return matchedOrgs;
 
         } catch (error) {
           console.error('Error in calculateSmartMatch:', error);
