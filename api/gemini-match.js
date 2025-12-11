@@ -239,6 +239,7 @@ Do not include any other text or explanation.`;
     const userAffiliation = analysisResult.user_affiliation || 'NONE';
     let matchedCategories = analysisResult.matched_categories || [];
     const specificKeywords = analysisResult.specific_keywords || [];
+    const negativeKeywords = analysisResult.negative_keywords || [];
 
     // Validate categories against the 10 allowed categories
     const validCategories = [
@@ -262,11 +263,12 @@ Do not include any other text or explanation.`;
     const validAffiliations = ['COS', 'COE', 'CIT', 'CAFA', 'CLA', 'CIE', 'NONE'];
     const finalAffiliation = validAffiliations.includes(userAffiliation) ? userAffiliation : 'NONE';
 
-    // Return the full analysis result
+    // Return the full analysis result including negative keywords
     return res.status(200).json({
       user_affiliation: finalAffiliation,
       matched_categories: filteredCategories,
-      specific_keywords: specificKeywords
+      specific_keywords: specificKeywords,
+      negative_keywords: Array.isArray(negativeKeywords) ? negativeKeywords : []
     });
 
   } catch (error) {
