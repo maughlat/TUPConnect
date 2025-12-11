@@ -344,7 +344,7 @@
               </svg>
               <a href="mailto:${email}" class="contact-link">${email}</a>
             </div>
-            ${club.is_active ? `
+            ${club.is_active && club.account_status === 'Account Activated' ? `
             <div class="modal-request-section">
               <button class="btn-request-join" id="requestJoinBtn">
                 Request to Join

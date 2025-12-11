@@ -397,7 +397,7 @@
           // Step 2: Fetch all organizations from Supabase
           const { data: organizations, error: orgError } = await supabase
             .from('organizations')
-            .select('id, name, categories, description, logo, affiliation, email, facebook_link, url, is_active, activities');
+            .select('id, name, categories, description, logo, affiliation, email, facebook_link, url, is_active, account_status, activities');
 
           if (orgError) {
             console.error('Error fetching organizations:', orgError);
@@ -712,7 +712,7 @@
               </svg>
               <a href="mailto:${email}" class="contact-link">${email}</a>
             </div>
-            ${club.is_active ? `
+            ${club.is_active && club.account_status === 'Account Activated' ? `
             <div class="modal-request-section">
               <button class="btn-request-join" id="requestJoinBtn">
                 Request to Join
