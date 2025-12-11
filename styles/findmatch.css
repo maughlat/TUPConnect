@@ -346,10 +346,14 @@
   box-shadow: 0 22px 38px rgba(11, 17, 32, 0.18);
 }
 
-.match-percentage-badge {
+.match-percentage-badge-container {
   position: absolute;
   bottom: 1rem;
   right: 1rem;
+  z-index: 10;
+}
+
+.match-percentage-badge {
   background: linear-gradient(135deg, var(--accent), #c73535);
   color: white;
   padding: 0.2rem 0.5rem;
@@ -357,8 +361,50 @@
   font-size: 0.7rem;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(163, 39, 39, 0.3);
-  z-index: 10;
   letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.match-percentage-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(163, 39, 39, 0.4);
+}
+
+.match-percentage-popover {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  background: var(--fg, #0e1420);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 20;
+  max-width: 250px;
+  word-wrap: break-word;
+  transform: translateY(-4px);
+}
+
+.match-percentage-popover::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 0.75rem;
+  border: 5px solid transparent;
+  border-top-color: var(--fg, #0e1420);
+}
+
+.match-percentage-badge-container:hover .match-percentage-popover {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
 }
 
 .club-header {

@@ -376,7 +376,8 @@
             if (matchPercentage > 0) {
               matches.push({
                 ...org,
-                matchPercentage: Math.min(matchPercentage, 100) // Cap at 100%
+                matchPercentage: Math.min(matchPercentage, 100), // Cap at 100%
+                matchedCategories: overlappingCategories // Store overlapping categories for popover
               });
             }
           });

@@ -32,6 +32,8 @@ export default async function handler(req, res) {
     // System instruction for Gemini
     const systemInstruction = `You are TUPConnect's organization matching AI. Your task is to analyze the user's provided text (interests, hobbies, course) and identify which of the following 10 categories are most relevant. Only return categories from this list. Return the result as a simple JSON array of strings, ONLY listing the relevant categories. Do not include any other text or explanation.
 
+**STRICT GUIDANCE:** When the user mentions terms like 'coding', 'programming', 'software', 'computer science', 'web development', 'app development', 'IT', 'information technology', or 'gaming', you MUST prefer "Technology/IT/Gaming" and "Academic/Research". Only use "Engineering/Built Env." if the user explicitly mentions traditional engineering fields like 'civil engineering', 'electrical engineering', 'mechanical engineering', 'construction', 'architecture', or 'structural engineering'. Computer Science and Software Development are NOT the same as traditional engineering disciplines.
+
 The 10 categories are:
 1. Academic/Research
 2. Technology/IT/Gaming

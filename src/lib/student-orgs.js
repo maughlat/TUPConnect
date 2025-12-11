@@ -181,9 +181,18 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
   // Build HTML
   let html = '<article class="club-card" style="cursor: pointer; position: relative;" data-club-id="' + escapeHtml(orgData.id) + '">';
   
-  // Match percentage badge (if provided)
+  // Match percentage badge (if provided) with hover popover
   if (matchPercentage !== null && matchPercentage !== undefined) {
+    // Get matched categories for popover (if available)
+    const matchedCategories = orgData.matchedCategories || [];
+    const popoverContent = matchedCategories.length > 0 
+      ? `Matched: ${matchedCategories.join(', ')}`
+      : `${matchPercentage}% match based on your interests`;
+    
+    html += `<div class="match-percentage-badge-container">`;
     html += `<div class="match-percentage-badge">${matchPercentage}% Match</div>`;
+    html += `<div class="match-percentage-popover">${escapeHtml(popoverContent)}</div>`;
+    html += `</div>`;
   }
 
   // Card header with logo and name
