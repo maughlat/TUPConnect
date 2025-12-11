@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
+// Using REST API directly instead of SDK for better compatibility
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -30,9 +29,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Initialize Gemini AI
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    
     // System instruction for Gemini
     const systemInstruction = `You are TUPConnect's organization matching AI. Your task is to analyze the user's provided text (interests, hobbies, course) and identify which of the following 10 categories are most relevant. Only return categories from this list. Return the result as a simple JSON array of strings, ONLY listing the relevant categories. Do not include any other text or explanation.
 
@@ -50,8 +46,7 @@ The 10 categories are:
 
     const prompt = `${systemInstruction}\n\nUser input: ${student_interest.trim()}\n\nReturn ONLY a JSON array like: ["Category 1", "Category 2"]`;
 
-    // Try multiple model names in order of preference
-    // Model availability may vary by API key permissions and region
+    // Try multiple model names using REST API directly
     const modelNames = [
       'gemini-1.5-flash',     // Fastest model (try first)
       'gemini-1.5-pro',       // More capable model
@@ -59,35 +54,59 @@ The 10 categories are:
       'gemini-pro'            // Legacy name
     ];
     
-    let result;
-    let response;
-    let aiResponse;
+    let aiResponse = null;
     let lastError = null;
     
-    // Try each model until one works
+    // Try each model using REST API
     for (const modelName of modelNames) {
       try {
         console.log(`Attempting to use model: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName });
         
-        // Call Gemini API with this model
-        result = await model.generateContent(prompt);
-        response = await result.response;
-        aiResponse = response.text().trim();
+        // Use REST API directly
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
         
-        // If we get here, the model worked!
-        console.log(`Successfully used model: ${modelName}`);
-        break;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: prompt
+              }]
+            }]
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: await response.text() }));
+          throw new Error(`API returned ${response.status}: ${JSON.stringify(errorData)}`);
+        }
+        
+        const data = await response.json();
+        
+        // Extract text from response
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+          aiResponse = data.candidates[0].content.parts[0].text.trim();
+          console.log(`Successfully used model: ${modelName}`);
+          break;
+        } else {
+          throw new Error('Unexpected response format from Gemini API');
+        }
       } catch (err) {
         console.warn(`Model ${modelName} failed:`, err.message);
         lastError = err;
         
-        // If it's a model-not-found error, try the next model
-        if (err.message && err.message.includes('not found') || err.message && err.message.includes('404')) {
+        // If it's a model-not-found error (404), try the next model
+        if (err.message && (err.message.includes('404') || err.message.includes('not found'))) {
           continue; // Try next model
+        } else if (err.message && err.message.includes('403') || err.message && err.message.includes('API key')) {
+          // API key or permission issue - don't try other models
+          throw new Error(`API key or permission issue: ${err.message}. Please check your API key and ensure Gemini API is enabled.`);
         } else {
-          // If it's a different error (like API key issue), throw it
-          throw err;
+          // Other errors - try next model but log it
+          continue;
         }
       }
     }
@@ -97,9 +116,8 @@ The 10 categories are:
       throw new Error(
         `All model attempts failed. Last error: ${lastError?.message || 'Unknown'}. ` +
         `Tried models: ${modelNames.join(', ')}. ` +
-        `Please verify: (1) Your API key is valid and has Gemini API access, ` +
-        `(2) Gemini API is enabled in Google Cloud Console, ` +
-        `(3) Check available models at https://aistudio.google.com/app/apikey`
+        `Please verify: (1) Your API key is valid, (2) Gemini API is enabled in Google Cloud Console, ` +
+        `(3) Your API key has access to Gemini models. Check: https://aistudio.google.com/app/apikey`
       );
     }
 
