@@ -3,7 +3,17 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      error: 'Method not allowed',
+      message: 'This endpoint only accepts POST requests. Please use a tool like Postman or curl to test it, or use the "Find Your Match" page on the website.',
+      acceptedMethods: ['POST'],
+      example: {
+        method: 'POST',
+        url: 'https://tupconnect.vercel.app/api/gemini-match',
+        headers: { 'Content-Type': 'application/json' },
+        body: { student_interest: 'I love programming and video games' }
+      }
+    });
   }
 
   // Get API key from environment variables
