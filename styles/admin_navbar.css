@@ -45,10 +45,20 @@
   text-decoration: none;
   transition: opacity 0.2s ease;
   font-family: "Space Grotesk", sans-serif;
+  display: flex;
+  align-items: center;
 }
 
 .admin-navbar-logo-custom:hover {
   opacity: 0.9;
+}
+
+.admin-navbar-logo-custom .nav-logo-icon {
+  height: 32px;
+  width: auto;
+  margin-right: 10px;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 .admin-nav-links-custom {
@@ -234,6 +244,11 @@
     font-size: 0.9rem;
   }
 
+  .admin-navbar-logo-custom .nav-logo-icon {
+    height: 28px;
+    margin-right: 8px;
+  }
+
   .admin-nav-links-custom {
     gap: 0.25rem;
     flex-wrap: wrap;
@@ -258,6 +273,11 @@
   .admin-navbar-logo-custom {
     margin: 0 0.5rem;
     font-size: 0.85rem;
+  }
+
+  .admin-navbar-logo-custom .nav-logo-icon {
+    height: 24px;
+    margin-right: 6px;
   }
 
   .admin-nav-links-custom {

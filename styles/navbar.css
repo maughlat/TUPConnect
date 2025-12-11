@@ -47,10 +47,20 @@
   margin: 0 2rem;
   text-decoration: none;
   transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
 }
 
 .navbar-logo-custom:hover {
   opacity: 0.9;
+}
+
+.nav-logo-icon {
+  height: 32px;
+  width: auto;
+  margin-right: 10px;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 .nav-links-custom {
@@ -205,6 +215,11 @@
     font-size: 0.9rem;
   }
 
+  .nav-logo-icon {
+    height: 28px;
+    margin-right: 8px;
+  }
+
   .nav-links-custom {
     gap: 0.25rem;
     flex-wrap: wrap;
@@ -229,6 +244,11 @@
   .navbar-logo-custom {
     margin: 0 0.5rem;
     font-size: 0.85rem;
+  }
+
+  .nav-logo-icon {
+    height: 24px;
+    margin-right: 6px;
   }
 
   .nav-links-custom {

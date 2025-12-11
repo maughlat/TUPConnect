@@ -50,10 +50,20 @@
   text-decoration: none;
   transition: opacity 0.2s ease;
   font-family: "Space Grotesk", sans-serif;
+  display: flex;
+  align-items: center;
 }
 
 .org-navbar-logo-custom:hover {
   opacity: 0.9;
+}
+
+.org-navbar-logo-custom .nav-logo-icon {
+  height: 32px;
+  width: auto;
+  margin-right: 10px;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 .org-nav-links-custom {
@@ -239,6 +249,11 @@
     font-size: 0.9rem;
   }
 
+  .org-navbar-logo-custom .nav-logo-icon {
+    height: 28px;
+    margin-right: 8px;
+  }
+
   .org-nav-links-custom {
     gap: 0.25rem;
     flex-wrap: wrap;
@@ -263,6 +278,11 @@
   .org-navbar-logo-custom {
     margin: 0 0.5rem;
     font-size: 0.85rem;
+  }
+
+  .org-navbar-logo-custom .nav-logo-icon {
+    height: 24px;
+    margin-right: 6px;
   }
 
   .org-nav-links-custom {
