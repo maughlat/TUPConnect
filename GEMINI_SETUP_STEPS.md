@@ -767,14 +767,36 @@ curl -X POST https://tupconnect.vercel.app/api/gemini-match \
    - Click "Save"
    - **Redeploy** (Step 4.9)
 
-**Step 3: Check API Key Permissions**
+**Step 3: Enable Gemini API in Google Cloud Console (CRITICAL!)**
+
+⚠️ **THIS IS LIKELY THE PROBLEM!** Your API key won't work if the Gemini API isn't enabled in your Google Cloud project.
+
 1. **Go to Google Cloud Console:** https://console.cloud.google.com/
-2. **Make sure you're signed in** with the same Google account
-3. **Check if the Gemini API is enabled:**
-   - In the search bar, type "Gemini API"
-   - Click on "Generative Language API"
-   - Make sure it says "API Enabled"
-   - If not, click "Enable"
+2. **Make sure you're signed in** with the same Google account you used to create the API key
+3. **Select or create a project:**
+   - Click the project dropdown at the top (next to "Google Cloud")
+   - If you see your project, select it
+   - If you don't see any project, or if you created a new API key, create a new project:
+     - Click "New Project"
+     - Give it a name (e.g., "TUPConnect Gemini")
+     - Click "Create"
+     - Wait for it to be created, then select it
+4. **Enable the Gemini API:**
+   - In the search bar at the top, type: `Generative Language API`
+   - Click on "Generative Language API" from the results
+   - You should see a page with API details
+   - **Look for an "Enable" button** (big blue button)
+   - **Click "Enable"**
+   - Wait 30-60 seconds for it to enable
+5. **Verify it's enabled:**
+   - The page should now say "API Enabled" or show usage statistics
+   - You should see "Enabled" with a green checkmark
+6. **If you created a new project:**
+   - You may need to create a new API key in that project
+   - Go back to: https://aistudio.google.com/app/apikey
+   - Create a new API key
+   - Update it in Vercel environment variables
+   - Redeploy
 
 **Step 4: Verify API Quota (Free Tier)**
 1. **Google gives free API calls** but there are limits
