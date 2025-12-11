@@ -161,6 +161,9 @@ export default async function handler(req, res) {
   try {
     // Initialize Gemini AI
     const genAI = new GoogleGenerativeAI(geminiApiKey);
+    
+    // Use gemini-pro (most stable and widely available model)
+    // Alternative models you can try: 'gemini-1.5-pro', 'gemini-1.0-pro'
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // System instruction for Gemini
@@ -382,7 +385,41 @@ The 10 categories are:
    - Key: `GEMINI_API_KEY`
    - Value: (hidden/shown as dots for security)
    - Environments: Production, Preview, Development
-3. **If you see it:** ✅ Success! Move to Step 5
+3. **If you see it:** ✅ Good! 
+4. **IMPORTANT:** Adding an environment variable does NOT automatically redeploy your site!
+   - You MUST redeploy for the variable to be available (see Step 4.9)
+
+### 4.9 Redeploy After Adding Environment Variable (CRITICAL!)
+
+⚠️ **VERY IMPORTANT:** After adding the environment variable, you MUST trigger a new deployment for it to take effect!
+
+**Option A: Redeploy from Dashboard (Easiest)**
+1. **Stay in the Vercel dashboard** (you should still be on the Settings → Environment Variables page)
+2. **Click the "Deployments" tab** at the top of the page
+3. **Find the most recent deployment** (it should be at the top of the list)
+4. **Look for three dots (`⋯`) or a menu icon** next to that deployment
+5. **Click the three dots** to open a menu
+6. **Click "Redeploy"** from the dropdown menu
+7. **A confirmation popup might appear** - click **"Redeploy"** again to confirm
+8. **Wait 1-2 minutes** for the redeployment to complete
+9. **The status should change** from "Building" → "Ready" with a green checkmark ✅
+
+**Option B: Redeploy via Git Push (Alternative)**
+1. **Make a small change** to any file (like add a space to `api/gemini-match.js`)
+2. **Commit and push:**
+   ```bash
+   git add api/gemini-match.js
+   git commit -m "Trigger redeploy for environment variable"
+   git push
+   ```
+3. **Wait for auto-deployment** in Vercel dashboard
+
+**Option C: Redeploy Specific Environment (Advanced)**
+1. **In the Environment Variables page**, look for a button that says **"Redeploy"** next to your variable
+2. **Click it** to redeploy all environments that use this variable
+3. **Wait for deployment to finish**
+
+**After redeploying, go to Step 8 to test again!**
 
 ---
 
@@ -503,6 +540,8 @@ If you ran `npm install` in Step 3, this should already be there.
 
 ## Step 8: Test the Live Endpoint
 
+⚠️ **IMPORTANT:** You cannot test this endpoint by simply visiting the URL in your browser! The browser sends a GET request, but this endpoint only accepts POST requests. You must use a tool like Postman, curl, or the testing methods below.
+
 ### 8.1 Open Terminal/Command Prompt
 
 1. **Open terminal** (same as before)
@@ -593,18 +632,199 @@ curl -X POST https://tupconnect.vercel.app/api/gemini-match \
 
 ### 8.4 If You Get an Error
 
-1. **Check Vercel Dashboard:**
-   - Go to: https://vercel.com/dashboard
-   - Click your TUPConnect project
-   - Click **"Functions"** tab (in left sidebar)
-   - Click on **"gemini-match"** function
-   - Click **"Logs"** tab
-   - Look for error messages
+**🚨 IF YOU SEE THIS ERROR:**
+```json
+{
+  "error": "Server configuration error"
+}
+```
 
-2. **Common errors and fixes:**
-   - **"Server configuration error"** → Go back to Step 4, make sure `GEMINI_API_KEY` is set correctly
-   - **"Function not found"** → Make sure you deployed (Step 7) and the file is at `api/gemini-match.js`
-   - **"Failed to parse"** → This is usually temporary, try again in a few seconds
+**This means the `GEMINI_API_KEY` environment variable is not set or not available. Follow these steps:**
+
+#### Fix for "Server configuration error"
+
+**Step 1: Verify the Environment Variable Exists**
+1. **Go to Vercel Dashboard:** https://vercel.com/dashboard
+2. **Click on your TUPConnect project**
+3. **Click the "Settings" tab** (at the top)
+4. **Click "Environment Variables"** (in left sidebar)
+5. **Look for `GEMINI_API_KEY`** in the list
+6. **If it's NOT there:**
+   - Go back to **Step 4** and add it properly
+7. **If it IS there:**
+   - Check that all three environments are checked (Production, Preview, Development)
+   - Continue to Step 2 below
+
+**Step 2: Check if You Redeployed After Adding the Variable**
+1. **Click the "Deployments" tab** (at the top of Vercel dashboard)
+2. **Look at the most recent deployment**
+3. **Check the timestamp** - was it deployed AFTER you added the environment variable?
+   - **If NO:** You need to redeploy! Go back to **Step 4.9** above and follow the redeploy instructions
+   - **If YES:** Continue to Step 3
+
+**Step 3: Verify the Variable Name (No Typos)**
+1. **Go back to Settings → Environment Variables**
+2. **Click on the `GEMINI_API_KEY` variable** (to edit it)
+3. **Check the Key/Name field** - it must be EXACTLY: `GEMINI_API_KEY`
+   - ❌ Wrong: `GEMINI_API_KEY ` (extra space at end)
+   - ❌ Wrong: `gemini_api_key` (lowercase)
+   - ❌ Wrong: `GEMINI-API-KEY` (dashes instead of underscores)
+   - ✅ Correct: `GEMINI_API_KEY` (all caps, underscores, no spaces)
+4. **If wrong, fix it and click Save**
+
+**Step 4: Verify the API Key Value**
+1. **Click on the `GEMINI_API_KEY` variable** to view/edit
+2. **Check the Value field** - it should start with `AIza...`
+3. **Make sure there are no extra spaces** before or after the key
+4. **Copy the value** and verify it matches what you saved in Step 1
+5. **If wrong, paste the correct key and click Save**
+
+**Step 5: Force Redeploy (MOST IMPORTANT!)**
+1. **Go to Deployments tab**
+2. **Click the three dots (`⋯`)** next to the most recent deployment
+3. **Click "Redeploy"**
+4. **Click "Redeploy"** again to confirm
+5. **Wait 2-3 minutes** for it to finish building
+6. **Try testing again** (Step 8.2 or 8.3)
+
+**Step 6: Check Function Logs (If Still Not Working)**
+1. **In Vercel Dashboard**, click your project
+2. **Click "Functions" tab** (in left sidebar)
+3. **Click on "gemini-match"** function
+4. **Click "Logs" tab**
+5. **Look for error messages** that might give more details
+6. **Common log messages:**
+   - `GEMINI_API_KEY is not set` → Variable not found (check Steps 1-5 above)
+   - `Invalid API key` → The key value is wrong (check Step 4)
+   - `Function timeout` → API took too long (try again)
+
+**Other Common Errors:**
+
+- **"Method not allowed" (405 error)**
+  - ❌ **You tried to visit the URL directly in your browser** - This won't work!
+  - ✅ **Solution:** You MUST use a POST request. Use one of these methods:
+    - Use Postman (Step 8.3, Option A)
+    - Use curl command (Step 8.2)
+    - Use an online tool like reqbin.com (Step 8.3, Option B)
+    - Test through the actual "Find Your Match" page on your website (Step 9)
+  - The endpoint only accepts POST requests, not GET requests (which browsers use when you visit a URL)
+
+- **"Function not found" or "404 Not Found"**
+  - Make sure `api/gemini-match.js` file exists in your project
+  - Make sure you deployed after creating the file (Step 7)
+  - Check that the URL is correct: `https://tupconnect.vercel.app/api/gemini-match`
+
+- **"Failed to parse" or "Invalid response format"**
+  - This is usually temporary - the AI might have returned unexpected format
+  - Wait 5 seconds and try again
+  - If it persists, check function logs (Step 6 above)
+
+- **"Network error" or "Failed to fetch"**
+  - Check your internet connection
+  - Make sure the Vercel deployment is complete (not still building)
+  - Try refreshing the page
+
+**Still having issues?** 
+- Double-check that you followed ALL steps in order
+- Make sure you redeployed AFTER adding the environment variable
+- Check Vercel's status page: https://www.vercel-status.com/ (to see if there are service issues)
+
+---
+
+### 8.5 If You Get "Failed to process request with AI"
+
+**🚨 IF YOU SEE THIS ERROR:**
+```json
+{
+  "error": "Failed to process request with AI. Please try again later."
+}
+```
+
+**This means the API key was found, but the Gemini API call is failing. Follow these steps:**
+
+**Step 1: Check Vercel Function Logs for Detailed Error**
+1. **Go to Vercel Dashboard:** https://vercel.com/dashboard
+2. **Click on your TUPConnect project**
+3. **Click "Functions" tab** (in left sidebar)
+4. **Click on "gemini-match"** function
+5. **Click "Logs" tab**
+6. **Look for error messages** - they will tell you the exact problem:
+   - `API_KEY_INVALID` → Your API key is wrong or not activated
+   - `MODEL_NOT_FOUND` or `models/... is not found` → Model name issue - use `gemini-pro` (see Step 5)
+   - `PERMISSION_DENIED` → API key doesn't have permissions
+   - `QUOTA_EXCEEDED` → You've used up your free quota
+
+**Step 2: Verify Your API Key is Valid**
+1. **Go to Google AI Studio:** https://aistudio.google.com/app/apikey
+2. **Check if your API key still exists** in the list
+3. **Make sure it's not expired** or revoked
+4. **If needed, create a new API key:**
+   - Click "Create API Key" again
+   - Copy the new key
+   - Go back to Vercel → Settings → Environment Variables
+   - Click on `GEMINI_API_KEY` to edit it
+   - Paste the new key
+   - Click "Save"
+   - **Redeploy** (Step 4.9)
+
+**Step 3: Check API Key Permissions**
+1. **Go to Google Cloud Console:** https://console.cloud.google.com/
+2. **Make sure you're signed in** with the same Google account
+3. **Check if the Gemini API is enabled:**
+   - In the search bar, type "Gemini API"
+   - Click on "Generative Language API"
+   - Make sure it says "API Enabled"
+   - If not, click "Enable"
+
+**Step 4: Verify API Quota (Free Tier)**
+1. **Google gives free API calls** but there are limits
+2. **Check your usage:**
+   - Go to Google Cloud Console
+   - Search for "APIs & Services" → "Dashboard"
+   - Look for "Generative Language API"
+   - Check your usage/quotas
+3. **If you've exceeded quota:**
+   - Wait 24 hours for reset, OR
+   - Set up billing (paid tier)
+
+**Step 5: Update the Code (Model Name Fix)**
+1. **The code uses `gemini-pro`** (stable model that works reliably)
+2. **If you get a model not found error**, update your code:
+   - Open `api/gemini-match.js` in your project
+   - Make sure line 25-26 uses: `const model = genAI.getGenerativeModel({ model: 'gemini-pro' });`
+   - Save the file
+   - Commit and push:
+     ```bash
+     git add api/gemini-match.js
+     git commit -m "Fix Gemini model name to gemini-pro"
+     git push
+     ```
+   - Wait for Vercel to redeploy (1-2 minutes)
+
+**Step 6: Test with a Simple Request**
+1. **Try a shorter, simpler input:**
+   ```json
+   {
+     "student_interest": "programming"
+   }
+   ```
+2. **If it works**, the issue might be with longer inputs or rate limiting
+3. **If it still fails**, check the logs again (Step 1)
+
+**Step 7: Verify Package Installation**
+1. **Make sure the package is installed:**
+   - In your project folder, check `package.json`
+   - Look for `"@google/generative-ai"` in dependencies
+2. **If it's not there or wrong version:**
+   ```bash
+   npm install @google/generative-ai@latest
+   ```
+3. **Commit and push:**
+   ```bash
+   git add package.json package-lock.json
+   git commit -m "Update Google Generative AI package"
+   git push
+   ```
 
 ---
 

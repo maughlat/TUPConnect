@@ -33,15 +33,9 @@ export default async function handler(req, res) {
     // Initialize Gemini AI
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     
-    // Try the latest model first, fallback to older models if needed
-    let model;
-    try {
-      model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    } catch (modelError) {
-      // Fallback to gemini-pro if gemini-1.5-flash doesn't work
-      console.warn('gemini-1.5-flash not available, trying gemini-pro:', modelError);
-      model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    }
+    // Use gemini-pro (most stable and widely available model)
+    // Alternative models you can try: 'gemini-1.5-pro', 'gemini-1.0-pro'
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // System instruction for Gemini
     const systemInstruction = `You are TUPConnect's organization matching AI. Your task is to analyze the user's provided text (interests, hobbies, course) and identify which of the following 10 categories are most relevant. Only return categories from this list. Return the result as a simple JSON array of strings, ONLY listing the relevant categories. Do not include any other text or explanation.
