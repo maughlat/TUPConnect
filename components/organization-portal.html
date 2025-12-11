@@ -1046,10 +1046,7 @@
           if (newStatus === 'Approved') {
             notification.innerHTML = `
               <strong>✓ Application Approved</strong><br>
-              ${app.student_name}'s application has been approved.<br>
-              <small style="opacity: 0.9; display: block; margin-top: 0.5rem;">
-                ✓ Interview/screening email notification has been scheduled and will be sent to ${app.personal_email} shortly.
-              </small>
+              ${app.student_name}'s application has been approved and they have been successfully added as a member of this organization.
             `;
           } else {
             notification.innerHTML = `<strong>✓ Application Rejected</strong><br>${app.student_name}'s application has been rejected.`;
