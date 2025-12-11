@@ -22,7 +22,16 @@ export default async function handler(req, res) {
   try {
     // Initialize Gemini AI
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    
+    // Try the latest model first, fallback to older models if needed
+    let model;
+    try {
+      model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    } catch (modelError) {
+      // Fallback to gemini-pro if gemini-1.5-flash doesn't work
+      console.warn('gemini-1.5-flash not available, trying gemini-pro:', modelError);
+      model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    }
 
     // System instruction for Gemini
     const systemInstruction = `You are TUPConnect's organization matching AI. Your task is to analyze the user's provided text (interests, hobbies, course) and identify which of the following 10 categories are most relevant. Only return categories from this list. Return the result as a simple JSON array of strings, ONLY listing the relevant categories. Do not include any other text or explanation.
@@ -97,8 +106,28 @@ The 10 categories are:
 
   } catch (error) {
     console.error('Gemini API error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // Provide more detailed error information for debugging
+    let errorMessage = 'Failed to process request with AI. Please try again later.';
+    
+    if (error.message && error.message.includes('API_KEY_INVALID')) {
+      errorMessage = 'Invalid API key. Please check your GEMINI_API_KEY in Vercel environment variables.';
+    } else if (error.message && error.message.includes('MODEL_NOT_FOUND')) {
+      errorMessage = 'Model not found. The Gemini API model may have changed.';
+    } else if (error.message && error.message.includes('PERMISSION_DENIED')) {
+      errorMessage = 'API key does not have permission to access Gemini API.';
+    } else if (error.message && error.message.includes('QUOTA_EXCEEDED')) {
+      errorMessage = 'API quota exceeded. Please check your Google Cloud quotas.';
+    }
+    
     return res.status(500).json({ 
-      error: 'Failed to process request with AI. Please try again later.' 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }
