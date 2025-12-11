@@ -165,6 +165,7 @@ Do not include any other text or explanation.`;
         if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
           aiResponse = data.candidates[0].content.parts[0].text.trim();
           console.log(`Successfully used model: ${modelName}`);
+          console.log(`Raw AI response: ${aiResponse.substring(0, 200)}...`);
           break;
         } else {
           throw new Error('Unexpected response format from Gemini API');
@@ -202,29 +203,32 @@ Do not include any other text or explanation.`;
 
     // Clean up response - remove markdown code blocks if present
     aiResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // Try to extract JSON object from response
+    let jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      aiResponse = jsonMatch[0];
+    }
 
-    // Parse JSON response
-    let matchedCategories;
+    // Parse JSON response - now expects an object, not an array
+    let analysisResult;
     try {
-      matchedCategories = JSON.parse(aiResponse);
+      analysisResult = JSON.parse(aiResponse);
     } catch (parseError) {
-      // If parsing fails, try to extract array from text
-      const arrayMatch = aiResponse.match(/\[(.*?)\]/);
-      if (arrayMatch) {
-        try {
-          matchedCategories = JSON.parse(arrayMatch[0]);
-        } catch (e) {
-          throw new Error('Failed to parse AI response as JSON');
-        }
-      } else {
-        throw new Error('AI response does not contain a valid JSON array');
-      }
+      console.error('JSON parse error:', parseError);
+      console.error('Response text:', aiResponse);
+      throw new Error('Failed to parse AI response as JSON');
     }
 
-    // Validate that result is an array
-    if (!Array.isArray(matchedCategories)) {
-      throw new Error('AI response is not an array');
+    // Validate that result is an object with expected structure
+    if (typeof analysisResult !== 'object' || Array.isArray(analysisResult)) {
+      throw new Error('AI response is not a valid JSON object');
     }
+
+    // Extract and validate fields
+    const userAffiliation = analysisResult.user_affiliation || 'NONE';
+    let matchedCategories = analysisResult.matched_categories || [];
+    const specificKeywords = analysisResult.specific_keywords || [];
 
     // Validate categories against the 10 allowed categories
     const validCategories = [
@@ -244,9 +248,15 @@ Do not include any other text or explanation.`;
       validCategories.includes(cat)
     );
 
-    // Return matched categories
+    // Validate affiliation
+    const validAffiliations = ['COS', 'COE', 'CIT', 'CAFA', 'CLA', 'CIE', 'NONE'];
+    const finalAffiliation = validAffiliations.includes(userAffiliation) ? userAffiliation : 'NONE';
+
+    // Return the full analysis result
     return res.status(200).json({
-      matched_categories: filteredCategories
+      user_affiliation: finalAffiliation,
+      matched_categories: filteredCategories,
+      specific_keywords: specificKeywords
     });
 
   } catch (error) {
