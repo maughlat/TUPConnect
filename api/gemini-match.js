@@ -46,13 +46,53 @@ The 10 categories are:
 
     const prompt = `${systemInstruction}\n\nUser input: ${student_interest.trim()}\n\nReturn ONLY a JSON array like: ["Category 1", "Category 2"]`;
 
-    // Try multiple model names using REST API directly
-    const modelNames = [
-      'gemini-1.5-flash',     // Fastest model (try first)
-      'gemini-1.5-pro',       // More capable model
-      'gemini-1.0-pro',       // Older stable model
-      'gemini-pro'            // Legacy name
+    // First, list available models to see what we can use
+    let availableModels = [];
+    try {
+      console.log('Listing available models...');
+      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiApiKey}`;
+      const listResponse = await fetch(listUrl);
+      
+      if (listResponse.ok) {
+        const listData = await listResponse.json();
+        if (listData.models && Array.isArray(listData.models)) {
+          // Filter models that support generateContent
+          availableModels = listData.models
+            .filter(model => 
+              model.supportedGenerationMethods && 
+              model.supportedGenerationMethods.includes('generateContent')
+            )
+            .map(model => model.name.replace('models/', ''))
+            .sort(); // Sort alphabetically
+          
+          console.log(`Found ${availableModels.length} available models:`, availableModels);
+        }
+      }
+    } catch (listError) {
+      console.warn('Failed to list models, will try default list:', listError.message);
+    }
+    
+    // Build model list: prefer available models, fallback to defaults
+    const preferredModels = [
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash-002',
+      'gemini-1.5-flash-001',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro-latest',
+      'gemini-1.5-pro-002',
+      'gemini-1.5-pro-001',
+      'gemini-1.5-pro',
+      'gemini-1.0-pro-latest',
+      'gemini-1.0-pro-001',
+      'gemini-1.0-pro',
+      'gemini-pro-latest',
+      'gemini-pro'
     ];
+    
+    // Combine available models (if found) with preferred models
+    const modelNames = availableModels.length > 0 
+      ? [...new Set([...availableModels, ...preferredModels])] // Unique models, available first
+      : preferredModels;
     
     let aiResponse = null;
     let lastError = null;
