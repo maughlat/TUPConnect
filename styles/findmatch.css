@@ -387,7 +387,8 @@
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 20;
-  max-width: 250px;
+  min-width: 220px;
+  max-width: 300px;
   word-wrap: break-word;
   transform: translateY(-4px);
 }
@@ -525,15 +526,15 @@
   border-radius: 8px;
   font-size: 0.75rem;
   line-height: 1.5;
-  white-space: nowrap;
+  white-space: normal;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 20;
-  max-width: 250px;
+  min-width: 220px;
+  max-width: 300px;
   word-wrap: break-word;
-  white-space: normal;
   transform: translateY(-4px);
 }
 

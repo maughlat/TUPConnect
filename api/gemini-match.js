@@ -29,57 +29,46 @@ export default async function handler(req, res) {
   }
 
   try {
-    // System instruction for Gemini - Advanced matching with synonyms and negative filtering
-    const systemInstruction = `You are TUPConnect's advanced matching engine. Your job is to deeply analyze the student's text.
+    // System instruction for Gemini - Advanced matching with 15 granular categories
+    const systemInstruction = `You are TUPConnect's advanced matching engine. Analyze the student's input deeply and map it to the specific TUP ecosystem.
 
 **1. DETECT AFFILIATION (Strict Mapping):**
    - Extract the user's course/college and map to: **COS, COE, CIT, CAFA, CLA, CIE**.
    - Mapping: COS = Computer Science/IT/IS/Physics/Chemistry/Math/Science; COE = Civil/Mechanical/Electrical/Electronics Engineering; CIT = Engineering Technology/Automotive/Power Plant/Casting; CAFA = Architecture/Fine Arts/Graphics; CLA = Liberal Arts/Business/Hospitality; CIE = Industrial Education/Home Economics.
    - If no course is mentioned, return **"NONE"**.
 
-**2. DETECT POSITIVE KEYWORDS (Synonym Matching):**
-   - Translate user's informal terms into standardized database keywords.
-   - Example: "making apps" -> add "software", "coding", "programming".
-   - Example: "building websites" -> add "web development", "coding", "programming".
-   - Example: "drawing" -> add "arts", "graphics", "design".
-   - Example: "helping people" -> add "service", "community", "volunteering", "outreach".
-   - Example: "God/Faith/prayer" -> add "religious", "spiritual", "faith".
-   - Example: "cats/dogs/animals" -> add "animal", "welfare", "pets".
-   - Example: "gaming/video games" -> add "gaming", "esports", "technology".
-   - Example: "business/money" -> add "entrepreneurship", "finance", "business".
-   - Example: "leading/leadership" -> add "leadership", "governance".
-   - Return these as \`specific_keywords\` (3-5 keywords).
+**2. DETECT SPECIFIC CATEGORIES (Granular Match):**
+   - Identify the top 3 relevant categories from this specific list:
+     1. **Computer Science & Software** (Coding, Apps, Web, AI) -> *Strictly for IT/CS*
+     2. **Engineering & Robotics** (Hardware, Circuits, Civil, Mechanical) -> *Strictly for Eng*
+     3. **Architecture & Construction** (Design, Buildings, Drafting)
+     4. **Science & Laboratory** (Chemistry, Physics, Math, Research)
+     5. **Gaming & Esports** (Video Games, Competition)
+     6. **Visual Arts & Media** (Drawing, Graphics, Photo, Video)
+     7. **Business & Entrepreneurship** (Management, Finance, Startups)
+     8. **Hospitality & Lifestyle** (Food, Fashion, Home Econ, Travel)
+     9. **Education & Teaching** (Teaching, Mentoring, Pedagogy)
+     10. **Technical & Industrial Trades** (Automotive, Power Plant, Hands-on)
+     11. **Student Government & Leadership** (Politics, Management, Leading)
+     12. **Community Service & Welfare** (Volunteering, Animal Care, Helping)
+     13. **Social Advocacy & Inclusivity** (Gender, Pride, Mental Health)
+     14. **Faith & Religion** (Spiritual, Muslim, Christian)
+     15. **Academic Excellence** (Scholarships, Honor Society)
 
-**3. DETECT NEGATIVE PREFERENCES (Negative Filtering):**
-   - Identify things the user explicitly dislikes (e.g., "I hate math", "not into sports", "don't like coding", "avoid engineering").
-   - Map these to categories or keywords to avoid.
-   - Example: "hate math" -> add "math", "academic", "research".
-   - Example: "not into sports" -> add "sports", "athletics".
-   - Example: "don't like coding" -> add "coding", "programming", "technology".
-   - Return these as \`negative_keywords\` (can be empty array if no dislikes mentioned).
+**3. DETECT KEYWORDS:**
+   - Extract specific nouns (e.g., "cats", "hackathon", "dance") as \`specific_keywords\`.
+   - Translate informal terms: "making apps" -> "software", "coding"; "helping people" -> "service", "volunteering"; "God/Faith" -> "religious", "spiritual"; "cats/dogs" -> "animal", "welfare".
 
-**4. DETECT CATEGORIES:**
-   - Return the top 3 relevant categories from the standard list:
-     1. Academic/Research
-     2. Technology/IT/Gaming
-     3. Engineering/Built Env.
-     4. Arts/Design/Media
-     5. Leadership/Governance
-     6. Service/Welfare/Outreach
-     7. Entrepreneurship/Finance
-     8. Industrial/Applied Skills
-     9. Social Justice/Advocacy
-     10. Culture/Religion
-   - Map "Computer Science/Coding" -> "Technology/IT/Gaming" (NOT Engineering).
-   - Map "Building/Construction" -> "Engineering/Built Env.".
+**4. DETECT NEGATIVES:**
+   - Extract dislikes (e.g., "I hate math", "not into sports") as \`negative_keywords\`.
 
 **OUTPUT FORMAT (JSON ONLY):**
 Return ONLY a JSON object in this exact format:
 {
   "user_affiliation": "CODE_OR_NONE",
-  "matched_categories": ["Category1", "Category2", "Category3"],
-  "specific_keywords": ["keyword1", "keyword2", "keyword3"],
-  "negative_keywords": ["avoid1", "avoid2"]
+  "matched_categories": ["Specific Category 1", "Specific Category 2"],
+  "specific_keywords": ["kw1", "kw2"],
+  "negative_keywords": ["neg1"]
 }
 
 Do not include any other text or explanation.`;
@@ -241,18 +230,23 @@ Do not include any other text or explanation.`;
     const specificKeywords = analysisResult.specific_keywords || [];
     const negativeKeywords = analysisResult.negative_keywords || [];
 
-    // Validate categories against the 10 allowed categories
+    // Validate categories against the 15 granular categories
     const validCategories = [
-      'Academic/Research',
-      'Technology/IT/Gaming',
-      'Engineering/Built Env.',
-      'Arts/Design/Media',
-      'Leadership/Governance',
-      'Service/Welfare/Outreach',
-      'Entrepreneurship/Finance',
-      'Industrial/Applied Skills',
-      'Social Justice/Advocacy',
-      'Culture/Religion'
+      'Computer Science & Software',
+      'Engineering & Robotics',
+      'Architecture & Construction',
+      'Science & Laboratory',
+      'Gaming & Esports',
+      'Visual Arts & Media',
+      'Business & Entrepreneurship',
+      'Hospitality & Lifestyle',
+      'Education & Teaching',
+      'Technical & Industrial Trades',
+      'Student Government & Leadership',
+      'Community Service & Welfare',
+      'Social Advocacy & Inclusivity',
+      'Faith & Religion',
+      'Academic Excellence'
     ];
 
     const filteredCategories = matchedCategories.filter(cat => 
