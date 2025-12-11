@@ -179,9 +179,9 @@
       // Load organizations from Supabase on page load
       document.addEventListener('DOMContentLoaded', async () => {
         // Fetch organizations for filtering and rendering
-        const { data } = await supabase.from('organizations').select('*');
-        if (data) {
-          allOrganizations = data;
+          const { data } = await supabase.from('organizations').select('*');
+          if (data) {
+            allOrganizations = data;
           console.log(`Loaded ${data.length} organizations`);
           // Initial render with no filters (show all)
           renderCategories('', [], []);
@@ -205,7 +205,12 @@
       // Helper functions for modal and rendering
       const buildLogoPath = (club) => {
         // Support both Supabase Storage URLs and local file paths
-        if (club.logo && (club.logo.startsWith('http://') || club.logo.startsWith('https://'))) {
+        // Return null if no logo exists - don't use default fallback
+        if (!club.logo || club.logo.trim().length === 0) {
+          return null;
+        }
+        
+        if (club.logo.startsWith('http://') || club.logo.startsWith('https://')) {
           // Full URL from Supabase Storage - use directly
           return { primary: club.logo, fallback: club.logo };
         } else {
@@ -217,7 +222,7 @@
             'TUP ComPAWnion': 'tup_compawnion'
           };
           
-          // Try mapped name first, then use club.logo, then try org name, finally default
+          // Try mapped name first, then use club.logo
           let logoFileName = logoMapping[club.name] || club.logo;
           
           // If still no logo, try to derive from organization name
@@ -233,9 +238,13 @@
             }
           }
           
-          // Fallback to COMPASS if still no logo found
-          const base = `../assets/${logoFileName || 'TUP_COMPASS'}`;
-          return { primary: `${base}.png`, fallback: `${base}.jpg` };
+          // Only return logo if we found one - no fallback to default
+          if (logoFileName) {
+            const base = `../assets/${logoFileName}`;
+            return { primary: `${base}.png`, fallback: `${base}.jpg` };
+          }
+          
+          return null;
         }
       };
 
@@ -280,6 +289,7 @@
         modalContent.innerHTML = `
           <div class="modal-main">
             <div class="modal-header-section">
+              ${logo ? `
               <div class="modal-logo">
                 <img
                   src="${logo.primary}"
@@ -287,6 +297,11 @@
                   onerror="this.onerror=null;this.src='${logo.fallback}';"
                 />
               </div>
+              ` : `
+              <div class="modal-logo" style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 0.9rem;">
+                No Logo
+              </div>
+              `}
               <div class="modal-title-section">
                 <h2>${club.name}</h2>
                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
@@ -303,10 +318,10 @@
             <div class="modal-focus">
               <h3>Activities</h3>
               <div class="activities-list">
-                <ul>
-                  ${activities.map(a => `<li>${a}</li>`).join("")}
-                </ul>
-              </div>
+                  <ul>
+                    ${activities.map(a => `<li>${a}</li>`).join("")}
+                  </ul>
+                </div>
             </div>
           </div>
 

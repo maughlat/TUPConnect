@@ -147,41 +147,47 @@ async function fetchAndRenderOrgs(targetElementId, isMatchView = false) {
  */
 function renderOrgCardHTML(orgData, matchPercentage = null) {
   // Build logo path - support both Supabase Storage URLs and local file paths
-  let logoPrimary, logoFallback;
+  // Return null if no logo exists - don't use default fallback
+  let logoPrimary = null;
+  let logoFallback = null;
   
-  if (orgData.logo && (orgData.logo.startsWith('http://') || orgData.logo.startsWith('https://'))) {
-    // Full URL from Supabase Storage - use directly
-    logoPrimary = orgData.logo;
-    logoFallback = orgData.logo; // Same URL for fallback
-  } else {
-    // Legacy local file path format
-    // Map organization names to their logo file names (handles naming mismatches)
-    const logoMapping = {
-      'Institute of Computer Engineering Technologists Student Association': 'TUP_ICpETSA',
-      'Dugong Bughaw': 'TUP_DUGONGBUGHAW',
-      'TUP ComPAWnion': 'tup_compawnion'
-    };
-    
-    // Try mapped name first, then use orgData.logo, then try org name, finally default
-    let logoFileName = logoMapping[orgData.name] || orgData.logo;
-    
-    // If still no logo, try to derive from organization name
-    if (!logoFileName && orgData.name) {
-      // Try common patterns
-      const name = orgData.name.toUpperCase();
-      if (name.includes('COMPUTER ENGINEERING TECHNOLOGISTS')) {
-        logoFileName = 'TUP_ICpETSA';
-      } else if (name.includes('DUGONG') && name.includes('BUGHAW')) {
-        logoFileName = 'TUP_DUGONGBUGHAW';
-      } else if (name.includes('COMPAWNION')) {
-        logoFileName = 'tup_compawnion';
+  if (orgData.logo && orgData.logo.trim().length > 0) {
+    if (orgData.logo.startsWith('http://') || orgData.logo.startsWith('https://')) {
+      // Full URL from Supabase Storage - use directly
+      logoPrimary = orgData.logo;
+      logoFallback = orgData.logo; // Same URL for fallback
+    } else {
+      // Legacy local file path format
+      // Map organization names to their logo file names (handles naming mismatches)
+      const logoMapping = {
+        'Institute of Computer Engineering Technologists Student Association': 'TUP_ICpETSA',
+        'Dugong Bughaw': 'TUP_DUGONGBUGHAW',
+        'TUP ComPAWnion': 'tup_compawnion'
+      };
+      
+      // Try mapped name first, then use orgData.logo
+      let logoFileName = logoMapping[orgData.name] || orgData.logo;
+      
+      // If still no logo, try to derive from organization name
+      if (!logoFileName && orgData.name) {
+        // Try common patterns
+        const name = orgData.name.toUpperCase();
+        if (name.includes('COMPUTER ENGINEERING TECHNOLOGISTS')) {
+          logoFileName = 'TUP_ICpETSA';
+        } else if (name.includes('DUGONG') && name.includes('BUGHAW')) {
+          logoFileName = 'TUP_DUGONGBUGHAW';
+        } else if (name.includes('COMPAWNION')) {
+          logoFileName = 'tup_compawnion';
+        }
+      }
+      
+      // Only use logo if we found one - no fallback to default
+      if (logoFileName) {
+        const logoBase = `../assets/${logoFileName}`;
+        logoPrimary = `${logoBase}.png`;
+        logoFallback = `${logoBase}.jpg`;
       }
     }
-    
-    // Fallback to default if still no logo found
-    const logoBase = `../assets/${logoFileName || 'TUP_COMPASS'}`;
-    logoPrimary = `${logoBase}.png`;
-    logoFallback = `${logoBase}.jpg`;
   }
 
   // Format categories - display all categories, not just the first one
@@ -221,9 +227,14 @@ function renderOrgCardHTML(orgData, matchPercentage = null) {
 
   // Card header with logo and name
   html += '<div class="club-header">';
-  html += '<div class="club-logo">';
-  html += `<img src="${logoPrimary}" alt="${escapeHtml(orgData.name)} logo" onerror="this.onerror=null;this.src='${logoFallback}';" />`;
-  html += '</div>';
+  if (logoPrimary) {
+    html += '<div class="club-logo">';
+    html += `<img src="${logoPrimary}" alt="${escapeHtml(orgData.name)} logo" onerror="this.onerror=null;this.src='${logoFallback}';" />`;
+    html += '</div>';
+  } else {
+    // No logo - show empty placeholder div with same dimensions
+    html += '<div class="club-logo" style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 0.7rem;">No Logo</div>';
+  }
   html += '<div class="club-heading">';
   html += `<h3>${escapeHtml(orgData.name)}</h3>`;
   html += `<p class="club-meta">${escapeHtml(affiliation)}</p>`;
