@@ -75,11 +75,48 @@
               <table class="org-table">
                 <thead>
                   <tr>
-                    <th class="col-org-name">Organization</th>
-                    <th class="col-affiliation">Affiliation</th>
-                    <th class="col-account-status">Account Status</th>
+                    <th class="col-org-name sortable" data-sort="name">
+                      Organization
+                      <span class="sort-indicator"></span>
+                    </th>
+                    <th class="col-affiliation sortable" data-sort="affiliation">
+                      Affiliation
+                      <span class="sort-indicator"></span>
+                    </th>
+                    <th class="col-account-status sortable" data-sort="account_status">
+                      Account Status
+                      <span class="sort-indicator"></span>
+                    </th>
                     <th class="col-actions">Actions</th>
-                    <th class="col-status">Status</th>
+                    <th class="col-status sortable" data-sort="is_active">
+                      Status
+                      <span class="sort-indicator"></span>
+                    </th>
+                    <th class="col-date">
+                      <div class="sort-dropdown-container">
+                        <span>Date Created</span>
+                        <button class="sort-dropdown-btn" id="dateSortBtn" aria-label="Sort by date">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 9l4-4 4 4"></path>
+                            <path d="M8 15l4 4 4-4"></path>
+                          </svg>
+                        </button>
+                        <div class="sort-dropdown-menu" id="dateSortMenu">
+                          <button class="sort-option" data-sort="desc">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M8 9l4-4 4 4"></path>
+                            </svg>
+                            Newest to Oldest
+                          </button>
+                          <button class="sort-option" data-sort="asc">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M8 15l4 4 4-4"></path>
+                            </svg>
+                            Oldest to Newest
+                          </button>
+                        </div>
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="orgTableBody">
@@ -369,10 +406,18 @@
 
       // Organizations data (loaded from Supabase)
       let organizations = [];
+      
+      // Sorting state
+      let sortField = 'created_at';
+      let sortDirection = 'desc'; // 'asc' or 'desc'
 
       // Initialize dashboard function (called after authentication)
       async function initializeDashboard() {
         await fetchOrganizations();
+        setupSortHandlers();
+        setupDateSortDropdown();
+        updateSortIndicators(); // Set initial sort indicators
+        updateDateSortButton(); // Set initial button state
         renderOrganizations();
       }
 
@@ -382,7 +427,7 @@
           const { data, error } = await supabase
             .from('organizations')
             .select('*')
-            .order('name', { ascending: true });
+            .order('created_at', { ascending: false });
 
           if (error) {
             console.error('Error fetching organizations:', error);
@@ -406,7 +451,8 @@
               is_active: isActive,
               account_status: accountStatus,
               activation_email: org.email || null,
-              description: org.description || ''
+              description: org.description || '',
+              created_at: org.created_at || new Date().toISOString()
             };
           });
 
@@ -419,8 +465,123 @@
 
       // User info is now displayed in navbar profile dropdown
 
+      // Setup sort handlers
+      function setupSortHandlers() {
+        const sortableHeaders = document.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+          header.addEventListener('click', () => {
+            const field = header.getAttribute('data-sort');
+            if (field === sortField) {
+              // Toggle direction if clicking same field
+              sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+              // New field, default to ascending
+              sortField = field;
+              sortDirection = 'asc';
+            }
+            updateSortIndicators();
+            renderOrganizations();
+          });
+        });
+      }
+
+      // Setup date sort dropdown
+      function setupDateSortDropdown() {
+        const dateSortBtn = document.getElementById('dateSortBtn');
+        const dateSortMenu = document.getElementById('dateSortMenu');
+        const sortOptions = dateSortMenu.querySelectorAll('.sort-option');
+
+        // Toggle dropdown on button click
+        dateSortBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dateSortMenu.classList.toggle('show');
+        });
+
+        // Handle sort option clicks
+        sortOptions.forEach(option => {
+          option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const direction = option.getAttribute('data-sort');
+            sortField = 'created_at';
+            sortDirection = direction;
+            updateSortIndicators();
+            updateDateSortButton();
+            renderOrganizations();
+            dateSortMenu.classList.remove('show');
+          });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!dateSortBtn.contains(e.target) && !dateSortMenu.contains(e.target)) {
+            dateSortMenu.classList.remove('show');
+          }
+        });
+      }
+
+      // Update date sort button indicator
+      function updateDateSortButton() {
+        const dateSortBtn = document.getElementById('dateSortBtn');
+        if (sortField === 'created_at') {
+          dateSortBtn.classList.add('active');
+          dateSortBtn.setAttribute('data-direction', sortDirection);
+        } else {
+          dateSortBtn.classList.remove('active');
+        }
+      }
+
+      // Update sort indicators
+      function updateSortIndicators() {
+        const sortableHeaders = document.querySelectorAll('.sortable');
+        sortableHeaders.forEach(header => {
+          header.classList.remove('sort-active', 'sort-asc', 'sort-desc');
+          const indicator = header.querySelector('.sort-indicator');
+          if (header.getAttribute('data-sort') === sortField) {
+            header.classList.add('sort-active', `sort-${sortDirection}`);
+            indicator.textContent = sortDirection === 'asc' ? '↑' : '↓';
+          } else {
+            indicator.textContent = '';
+          }
+        });
+        updateDateSortButton();
+      }
+
+      // Sort organizations array
+      function sortOrganizations() {
+        organizations.sort((a, b) => {
+          let aVal = a[sortField];
+          let bVal = b[sortField];
+          
+          // Handle date sorting
+          if (sortField === 'created_at') {
+            aVal = new Date(aVal).getTime();
+            bVal = new Date(bVal).getTime();
+          }
+          
+          // Handle string sorting (case-insensitive)
+          if (typeof aVal === 'string' && typeof bVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+          }
+          
+          // Handle boolean sorting
+          if (typeof aVal === 'boolean') {
+            aVal = aVal ? 1 : 0;
+            bVal = bVal ? 1 : 0;
+          }
+          
+          // Compare values
+          if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+          if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
       // Render organizations table
       function renderOrganizations() {
+        // Sort organizations before rendering
+        sortOrganizations();
+        
         const tbody = document.getElementById('orgTableBody');
         tbody.innerHTML = '';
 
@@ -466,6 +627,17 @@
             </div>
           `;
 
+          // Format date
+          const formatDate = (dateString) => {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            });
+          };
+
           const row = document.createElement('tr');
           row.innerHTML = `
             <td class="cell-org-name">
@@ -486,6 +658,9 @@
               <span class="status-badge ${org.is_active ? 'active' : 'inactive'}">
                 ${org.is_active ? 'Active' : 'Inactive'}
               </span>
+            </td>
+            <td class="cell-date">
+              <span class="date-text">${formatDate(org.created_at)}</span>
             </td>
           `;
           tbody.appendChild(row);

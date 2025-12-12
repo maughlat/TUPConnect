@@ -1,0 +1,18 @@
+# Cursor Rules for TUPConnect Project
+
+## Supabase Configuration
+- Project URL: https://rbmfimbdtiyuiflunuhx.supabase.co
+- Anon Key: (stored in src/lib/supabase.js)
+- Service Role Key: (needed for MCP - get from Supabase Dashboard)
+
+## Database Schema
+- Main schema file: database/schema.sql
+- Organizations table has RLS policies enabled
+- Admin role required for INSERT operations on organizations table
+
+## Important Notes
+- Never commit service role keys to git
+- Use environment variables for sensitive keys
+- RLS policies are enforced on all tables
+
+

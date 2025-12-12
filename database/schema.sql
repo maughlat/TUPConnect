@@ -197,7 +197,7 @@ EXCEPTION
   WHEN OTHERS THEN
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+$$ LANGUAGE plpgsql SECURITY DEFINER VOLATILE;
 
 -- ============================================================================
 -- 6. HELPER FUNCTION: get_user_organization_id()
@@ -280,11 +280,19 @@ CREATE POLICY "Admins can update any organization"
   WITH CHECK (get_user_role() = 'admin');
 
 -- Policy: Admins can INSERT organizations
+-- Using IS NOT DISTINCT FROM to handle NULL cases properly
 CREATE POLICY "Admins can insert organizations"
   ON organizations
   FOR INSERT
   TO authenticated
-  WITH CHECK (get_user_role() = 'admin');
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'admin'
+    )
+  );
 
 -- Policy: Admins can DELETE organizations
 CREATE POLICY "Admins can delete organizations"

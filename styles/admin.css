@@ -325,23 +325,27 @@ body {
 
 /* Column Widths */
 .org-table .col-org-name {
-  width: 30%;
+  width: 25%;
 }
 
 .org-table .col-affiliation {
-  width: 17.5%;
+  width: 12%;
 }
 
 .org-table .col-account-status {
-  width: 17.5%;
+  width: 15%;
 }
 
 .org-table .col-actions {
-  width: 17.5%;
+  width: 15%;
 }
 
 .org-table .col-status {
-  width: 17.5%;
+  width: 12%;
+}
+
+.org-table .col-date {
+  width: 10%;
 }
 
 .org-table thead {
@@ -368,6 +372,148 @@ body {
 
 .org-table th.col-actions {
   text-align: center;
+}
+
+/* Sortable headers */
+.org-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.org-table th.sortable:hover {
+  background-color: rgba(163, 39, 39, 0.08);
+}
+
+.org-table th.sortable:active {
+  background-color: rgba(163, 39, 39, 0.12);
+}
+
+.org-table th.sortable .sort-indicator {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: var(--accent);
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: inline-block;
+  min-width: 1em;
+}
+
+.org-table th.sortable.sort-active .sort-indicator {
+  opacity: 1;
+}
+
+.org-table th.sortable:hover .sort-indicator {
+  opacity: 0.6;
+}
+
+.org-table th.sortable.sort-active:hover .sort-indicator {
+  opacity: 1;
+}
+
+/* Show indicator on hover even when not active */
+.org-table th.sortable:hover .sort-indicator:not(:empty) {
+  opacity: 0.6;
+}
+
+/* Date column styling */
+.org-table .cell-date {
+  font-size: 0.875rem;
+  color: var(--fg-secondary);
+}
+
+.org-table .cell-date .date-text {
+  white-space: nowrap;
+}
+
+/* Date Sort Dropdown */
+.sort-dropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-dropdown-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.sort-dropdown-btn:hover {
+  background-color: rgba(163, 39, 39, 0.1);
+  color: var(--accent);
+}
+
+.sort-dropdown-btn.active {
+  color: var(--accent);
+  background-color: rgba(163, 39, 39, 0.1);
+}
+
+.sort-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid rgba(163, 39, 39, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 1000;
+  display: none;
+  overflow: hidden;
+}
+
+.sort-dropdown-menu.show {
+  display: block;
+}
+
+.sort-option {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--fg);
+  transition: background-color 0.2s ease;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.sort-option:hover {
+  background-color: rgba(163, 39, 39, 0.08);
+}
+
+.sort-option:first-child {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.sort-option:last-child {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.sort-option svg {
+  flex-shrink: 0;
 }
 
 .org-table td {
